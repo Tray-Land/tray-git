@@ -27,7 +27,6 @@ public partial class App : Application
     private RegisteredWaitHandle? _showWait;
     private TrayIcon? _trayIcon;
     private TrayFlyoutWindow? _flyout;
-    private SettingsWindow? _settings;
     private DispatcherQueue? _dispatcher;
     private bool _isExiting;
 
@@ -102,24 +101,36 @@ public partial class App : Application
     {
         TrayFlyoutWindow flyout = EnsureFlyout();
         flyout.HidePopup();
+        flyout.ShowMainPage();
         flyout.ShowPopup();
     }
 
+    public void HideFlyout() => _flyout?.HidePopup();
+
+    /// <summary>Shows the flyout on its settings page.</summary>
     public void ShowSettings()
     {
-        _flyout?.HidePopup();
-        if (_settings is null)
+        TrayFlyoutWindow flyout = EnsureFlyout();
+        flyout.ShowSettingsPage();
+        if (!flyout.IsPopupVisible)
         {
-            _settings = new SettingsWindow();
-            _settings.Closed += (_, _) =>
-            {
-                _settings = null;
-                ReleaseIdleResourcesIfNoWindows();
-            };
+            flyout.ShowPopup();
+        }
+    }
+
+    /// <summary>
+    /// Asks for the source folder with a picker owned by the flyout, and saves it. The repo list
+    /// rescans when it sees the change. Returns true if the user chose a folder.
+    /// </summary>
+    public async Task<bool> ChooseSourceFolderAsync()
+    {
+        if (_flyout is null || await _flyout.PickFolderAsync() is not { } folder)
+        {
+            return false;
         }
 
-        _settings.Activate();
-        _settings.BringToFront();
+        SettingsService.SourceFolder = folder;
+        return true;
     }
 
     private void InitializeTrayIcon()
@@ -171,7 +182,7 @@ public partial class App : Application
 
     private void ReleaseIdleResourcesIfNoWindows()
     {
-        if (_flyout is null && _settings is null && !_isExiting)
+        if (_flyout is null && !_isExiting)
         {
             MemoryService.ReleaseIdle();
         }
@@ -181,7 +192,6 @@ public partial class App : Application
     {
         _isExiting = true;
         _flyout?.CloseWindow();
-        _settings?.Close();
 
         if (_trayIcon is not null)
         {

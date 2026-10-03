@@ -6,8 +6,7 @@ namespace TrayGit.Services;
 
 /// <summary>
 /// Typed wrapper over <see cref="ApplicationData.LocalSettings"/>. Every read falls back to a
-/// default so a missing or corrupt value never crashes the app. Not for secrets: see
-/// <see cref="Secrets"/> (build-time app keys) and <see cref="CredentialStore"/> (user tokens).
+/// default so a missing or corrupt value never crashes the app.
 /// </summary>
 /// <remarks>
 /// LocalSettings values must be small (8 KB each) WinRT primitives. Store enums as int, and lists
@@ -22,6 +21,34 @@ internal static class SettingsService
     {
         get => Get(nameof(HasLaunchedBefore), false);
         set => Set(nameof(HasLaunchedBefore), value);
+    }
+
+    /// <summary>Raised on the setter's thread when <see cref="SourceFolder"/> changes.</summary>
+    public static event EventHandler? SourceFolderChanged;
+
+    /// <summary>The folder scanned for git repos, or null until the user picks one.</summary>
+    public static string? SourceFolder
+    {
+        get => Get<string?>(nameof(SourceFolder), null);
+        set
+        {
+            if (string.Equals(value, SourceFolder, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            Set(nameof(SourceFolder), value);
+            SourceFolderChanged?.Invoke(null, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Repo path → UTC ticks of its last one-click action, for "recent first" ordering.</summary>
+    public static Dictionary<string, long> LastUsed
+    {
+        get => GetJson(nameof(LastUsed), AppJsonContext.Default.DictionaryStringInt64) is { } map
+            ? new Dictionary<string, long>(map, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        set => SetJson(nameof(LastUsed), value, AppJsonContext.Default.DictionaryStringInt64);
     }
 
     public static T? GetJson<T>(string key, JsonTypeInfo<T> typeInfo)

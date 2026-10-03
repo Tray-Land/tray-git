@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Input;
 using TrayGit.Controls;
 using TrayGit.Services;
 using Windows.Graphics;
+using Windows.Storage.Pickers;
 using Windows.UI.ViewManagement;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -24,8 +25,8 @@ namespace TrayGit.Views;
 /// </summary>
 public sealed partial class TrayFlyoutWindow : WindowEx
 {
-    private const int PopupWidth = 360;
-    private const int PopupHeight = 480;
+    private const int PopupWidth = 380;
+    private const int PopupHeight = 560;
 
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int WS_EX_LAYERED = 0x00080000;
@@ -54,6 +55,8 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private readonly DispatcherQueueTimer _animationTimer;
     private readonly Stopwatch _animationClock = new();
 
+    private SettingsPage? _settingsPage;
+    private bool _isPickerOpen;
     private bool _isShowing;
     private bool _isPopupVisible;
     private bool _allowClose;
@@ -106,7 +109,11 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         _animationTimer.Tick += AnimationTimer_Tick;
     }
 
-    /// <summary>Shows the popup, or hides it if already visible (tray-icon click behavior).</summary>
+    public bool IsPopupVisible => _isPopupVisible;
+
+    public bool IsShowingSettings => PageHost.Content is SettingsPage;
+
+    /// <summary>Shows the popup on the repo list, or hides it if already visible (tray-icon click behavior).</summary>
     public void Toggle()
     {
         if (_isPopupVisible)
@@ -120,7 +127,62 @@ public sealed partial class TrayFlyoutWindow : WindowEx
             return;
         }
 
+        ShowMainPage();
         ShowPopup();
+    }
+
+    public void ShowSettingsPage()
+    {
+        _settingsPage ??= new SettingsPage(ShowMainPage);
+        _page.OnHidden(); // no scanning behind the settings page
+        PageHost.Content = _settingsPage;
+        _settingsPage.OnShown();
+    }
+
+    public void ShowMainPage()
+    {
+        if (PageHost.Content == _page)
+        {
+            return;
+        }
+
+        PageHost.Content = _page;
+        if (_isPopupVisible)
+        {
+            _page.OnShown();
+        }
+    }
+
+    /// <summary>
+    /// Shows the folder picker owned by this window. The picker takes focus, so light-dismiss is
+    /// paused until it closes; the flyout then takes focus back.
+    /// </summary>
+    public async Task<string?> PickFolderAsync()
+    {
+        if (_isPickerOpen)
+        {
+            return null;
+        }
+
+        FolderPicker picker = new() { SuggestedStartLocation = PickerLocationId.ComputerFolder };
+        picker.FileTypeFilter.Add("*");
+        InitializeWithWindow.Initialize(picker, _hwnd);
+
+        _isPickerOpen = true;
+        _hideTimer.Stop();
+        try
+        {
+            return (await picker.PickSingleFolderAsync())?.Path;
+        }
+        finally
+        {
+            _isPickerOpen = false;
+            if (_isPopupVisible && !_isClosed)
+            {
+                Activate();
+                PInvoke.SetForegroundWindow(_hwnd);
+            }
+        }
     }
 
     public void ShowPopup()
@@ -143,7 +205,14 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         Activate();
         PInvoke.SetForegroundWindow(_hwnd);
 
-        _page.OnShown();
+        if (_settingsPage is not null && IsShowingSettings)
+        {
+            _settingsPage.OnShown();
+        }
+        else
+        {
+            _page.OnShown();
+        }
     }
 
     public void HidePopup()
@@ -182,6 +251,8 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         _animationTimer.Stop();
         _page.OnHidden();
         _page.Dispose();
+        PageHost.Content = null;
+        _settingsPage = null;
 
         _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
         Activated -= OnWindowActivated;
@@ -330,7 +401,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private void HideIfFocusLeftWindow()
     {
         _hideTimer.Stop();
-        if (_isPopupVisible && !ShouldRemainVisible(PInvoke.GetForegroundWindow()))
+        if (_isPopupVisible && !_isPickerOpen && !ShouldRemainVisible(PInvoke.GetForegroundWindow()))
         {
             HidePopup();
         }
@@ -360,9 +431,32 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         return className.SequenceEqual("Xaml_WindowedPopupClass") || className.SequenceEqual("#32768");
     }
 
+    // Escape and Back go back from settings first, then hide.
     private void Escape_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        HidePopup();
+        if (IsShowingSettings)
+        {
+            ShowMainPage();
+        }
+        else
+        {
+            HidePopup();
+        }
+    }
+
+    private void Back_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
+    {
+        args.Handled = true;
+        ShowMainPage();
+    }
+
+    private void PopupRoot_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        if (IsShowingSettings && e.GetCurrentPoint(PopupRoot).Properties.IsXButton1Pressed)
+        {
+            e.Handled = true;
+            ShowMainPage();
+        }
     }
 }

@@ -1,28 +1,50 @@
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using TrayGit.Services;
 using Windows.ApplicationModel;
-using WinUIEx;
 
 namespace TrayGit.Views;
 
-public sealed partial class SettingsWindow : WindowEx
+/// <summary>Settings, shown in place of the repo list inside the flyout.</summary>
+public sealed partial class SettingsPage : Page
 {
+    private readonly Action _goBack;
     private bool _loading = true;
 
-    public SettingsWindow()
+    public SettingsPage(Action goBack)
     {
+        _goBack = goBack;
         InitializeComponent();
-        Title = $"{App.DisplayName} Settings";
-        AppTitleBar.Title = Title;
-        ExtendsContentIntoTitleBar = true;
-        SetTitleBar(AppTitleBar);
-        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"));
-        WindowPlacementService.CenterOnPrimary(this, 480, 560);
-
         VersionText.Text = $"{App.DisplayName} {GetVersion()}";
-        _ = LoadStartupStateAsync();
         _loading = false;
     }
+
+    /// <summary>The page appeared: re-read state that may have changed elsewhere and focus Back.</summary>
+    public void OnShown()
+    {
+        ShowSourceFolder();
+        _ = LoadStartupStateAsync();
+        BackButton.Focus(FocusState.Programmatic);
+    }
+
+    private void ShowSourceFolder() =>
+        SourceFolderText.Text = SettingsService.SourceFolder is { Length: > 0 } folder
+            ? folder
+            : "Choose the folder that holds your git repos. Repos up to four folders deep are listed.";
+
+    private async void BrowseButton_Click(object sender, RoutedEventArgs e)
+    {
+        // The flyout ignores a second pick while one is open, so the button can stay enabled and
+        // keep focus for when the picker returns.
+        if (await App.Current.ChooseSourceFolderAsync())
+        {
+            ShowSourceFolder();
+        }
+
+        BrowseButton.Focus(FocusState.Programmatic);
+    }
+
+    private void BackButton_Click(object sender, RoutedEventArgs e) => _goBack();
 
     private static string GetVersion()
     {
