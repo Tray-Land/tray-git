@@ -10,6 +10,7 @@ internal sealed record RepoScan(string Root, DateTime ScannedUtc, List<GitRepo> 
 
 [JsonSerializable(typeof(RepoScan))]
 [JsonSerializable(typeof(Dictionary<string, long>))]
+[JsonSerializable(typeof(string[]))]
 internal sealed partial class AppJsonContext : JsonSerializerContext;
 
 /// <summary>

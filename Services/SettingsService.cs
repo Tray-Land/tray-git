@@ -51,6 +51,22 @@ internal static class SettingsService
         set => SetJson(nameof(LastUsed), value, AppJsonContext.Default.DictionaryStringInt64);
     }
 
+    /// <summary>Paths of the repos the user starred.</summary>
+    public static HashSet<string> Favorites
+    {
+        get => GetJson(nameof(Favorites), AppJsonContext.Default.StringArray) is { } paths
+            ? new HashSet<string>(paths, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        set => SetJson(nameof(Favorites), value.Order(StringComparer.OrdinalIgnoreCase).ToArray(), AppJsonContext.Default.StringArray);
+    }
+
+    /// <summary>Whether the list is narrowed to favorites.</summary>
+    public static bool ShowFavoritesOnly
+    {
+        get => Get(nameof(ShowFavoritesOnly), false);
+        set => Set(nameof(ShowFavoritesOnly), value);
+    }
+
     public static T? GetJson<T>(string key, JsonTypeInfo<T> typeInfo)
     {
         if (Get<string?>(key, null) is not { } json)

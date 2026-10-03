@@ -53,6 +53,19 @@ public sealed class RepoListPolicyTests
         Assert.AreEqual("", RepoListPolicy.Describe(Repo("x")));
     }
 
+    [TestMethod]
+    public void OnlyPathsKeepsJustThoseRepos()
+    {
+        HashSet<string> favorites = new(StringComparer.OrdinalIgnoreCase) { @"c:\src\gamma", @"C:\src\apps\tray-git" };
+        CollectionAssert.AreEqual(
+            new[] { "gamma", "tray-git" },
+            RepoListPolicy.Arrange(Repos, new Dictionary<string, long>(), null, favorites).Select(r => r.Name).ToArray());
+        CollectionAssert.AreEqual(
+            new[] { "tray-git" },
+            RepoListPolicy.Arrange(Repos, new Dictionary<string, long>(), "tray", favorites).Select(r => r.Name).ToArray());
+        Assert.AreEqual(0, RepoListPolicy.Arrange(Repos, new Dictionary<string, long>(), null, new HashSet<string>()).Count);
+    }
+
     private static string[] Names(string query) =>
         RepoListPolicy.Arrange(Repos, new Dictionary<string, long>(), query).Select(r => r.Name).ToArray();
 
