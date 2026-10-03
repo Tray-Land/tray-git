@@ -21,15 +21,26 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
                 x:Name="TitleText"
                 VerticalAlignment="Center"
                 Style="{StaticResource SubtitleTextBlockStyle}"
                 Text="Tray Git" />
+            <ToggleButton
+                x:Name="FavoritesToggle"
+                Grid.Column="1"
+                AutomationProperties.Name="Show only favorites"
+                Checked="FavoritesToggle_Changed"
+                Style="{StaticResource FlyoutIconToggleButtonStyle}"
+                ToolTipService.ToolTip="Show only favorites"
+                Unchecked="FavoritesToggle_Changed">
+                <FontIcon x:Name="FavoritesToggleIcon" FontSize="14" Glyph="&#xE734;" />
+            </ToggleButton>
             <Button
                 x:Name="RefreshButton"
-                Grid.Column="1"
+                Grid.Column="2"
                 AutomationProperties.Name="Rescan source folder"
                 Click="RefreshButton_Click"
                 Style="{StaticResource FlyoutIconButtonStyle}"
@@ -37,7 +48,7 @@
                 <FontIcon FontSize="14" Glyph="&#xE72C;" />
             </Button>
             <Button
-                Grid.Column="2"
+                Grid.Column="3"
                 AutomationProperties.Name="Settings"
                 Click="SettingsButton_Click"
                 Style="{StaticResource FlyoutIconButtonStyle}"
@@ -77,6 +88,30 @@
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="core:GitRepo">
+                    <!--  Swipe left (touch or pen) to reveal Fetch; right-click does the same with a mouse  -->
+                    <SwipeControl>
+                        <SwipeControl.RightItems>
+                            <SwipeItems Mode="Reveal">
+                                <SwipeItem
+                                    Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                                    Invoked="FetchSwipeItem_Invoked"
+                                    Text="Fetch">
+                                    <SwipeItem.IconSource>
+                                        <FontIconSource Glyph="&#xE895;" />
+                                    </SwipeItem.IconSource>
+                                </SwipeItem>
+                                <SwipeItem
+                                    Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                    Invoked="FavoriteSwipeItem_Invoked"
+                                    Text="{x:Bind FavoriteActionText, Mode=OneWay}">
+                                    <SwipeItem.IconSource>
+                                        <FontIconSource Glyph="&#xE734;" />
+                                    </SwipeItem.IconSource>
+                                </SwipeItem>
+                            </SwipeItems>
+                        </SwipeControl.RightItems>
                     <Grid
                         Padding="0,6"
                         AutomationProperties.Name="{x:Bind Name}"
@@ -84,6 +119,27 @@
                         ColumnSpacing="2"
                         DoubleTapped="RepoRow_DoubleTapped"
                         ToolTipService.ToolTip="{x:Bind Path}">
+                        <Grid.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem
+                                    Click="FetchMenuItem_Click"
+                                    IsEnabled="{x:Bind CanFetch, Mode=OneWay}"
+                                    Tag="{x:Bind}"
+                                    Text="Fetch">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE895;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="FavoriteMenuItem_Click"
+                                    Tag="{x:Bind}"
+                                    Text="{x:Bind FavoriteActionText, Mode=OneWay}">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE734;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </Grid.ContextFlyout>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -91,17 +147,81 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock
-                                Style="{StaticResource BodyStrongTextBlockStyle}"
-                                Text="{x:Bind Name}"
-                                TextTrimming="CharacterEllipsis"
-                                TextWrapping="NoWrap" />
-                            <TextBlock
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="{x:Bind Description}"
-                                TextTrimming="CharacterEllipsis"
-                                TextWrapping="NoWrap" />
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock
+                                    MaxWidth="240"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Text="{x:Bind Name}"
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="NoWrap" />
+                                <FontIcon
+                                    VerticalAlignment="Center"
+                                    FontSize="11"
+                                    Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                    Glyph="&#xE735;"
+                                    ToolTipService.ToolTip="Favorite"
+                                    Visibility="{x:Bind IsFavorite, Mode=OneWay}" />
+                            </StackPanel>
+                            <!--  Branch, then the status segment, then the parent folder  -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    MaxWidth="150"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind BranchText}"
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="NoWrap" />
+                                <StackPanel
+                                    Grid.Column="1"
+                                    Orientation="Horizontal">
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind AddedText, Mode=OneWay}"
+                                        Visibility="{x:Bind HasAdded, Mode=OneWay}" />
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind RemovedText, Mode=OneWay}"
+                                        Visibility="{x:Bind HasRemoved, Mode=OneWay}" />
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind BehindText, Mode=OneWay}"
+                                        ToolTipService.ToolTip="Commits to pull"
+                                        Visibility="{x:Bind HasBehind, Mode=OneWay}" />
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind AheadText, Mode=OneWay}"
+                                        ToolTipService.ToolTip="Commits to push"
+                                        Visibility="{x:Bind HasAhead, Mode=OneWay}" />
+                                    <ProgressRing
+                                        Width="12"
+                                        Margin="6,0,0,0"
+                                        Height="12"
+                                        VerticalAlignment="Center"
+                                        IsActive="{x:Bind IsFetching, Mode=OneWay}"
+                                        Visibility="{x:Bind IsFetching, Mode=OneWay}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Margin="6,0,0,0"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind ParentCaption}"
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="NoWrap" />
+                            </Grid>
                         </StackPanel>
                         <Button
                             Grid.Column="1"
@@ -129,6 +249,7 @@
                             <FontIcon FontSize="14" Glyph="&#xE774;" />
                         </Button>
                     </Grid>
+                    </SwipeControl>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>

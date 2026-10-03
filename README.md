@@ -15,7 +15,9 @@ Tray Git is a WinUI 3 app that lives in the Windows notification area. It has no
   - **Remote** opens the `origin` remote (or the first remote) in your browser. GitHub, GitLab, Bitbucket, Azure DevOps and self-hosted servers work, whether the remote is https, ssh (`git@host:owner/repo.git`) or `git://`. Credentials and ssh ports are stripped. The button is disabled for repos with no remote or a local-path remote.
 - **Filter:** start typing as soon as the flyout opens. Every word must match the repo name or its path under the source folder. Press **Enter** to open a terminal in the top match.
 - **Recent first:** repos you've used through Tray Git sort to the top. Otherwise the list is alphabetical.
-- **Branch at a glance:** each row shows the checked-out branch (or short commit when detached) and the parent folder.
+- **Branch at a glance:** each row shows the checked-out branch (or short commit when detached), then its status, then the parent folder. Status is lines added in green and removed in red (working tree and index versus `HEAD`), `↓n` commits to pull and `↑n` commits to push.
+- **Fetch:** right-click a row, or swipe it left on a touch screen or pen, and choose **Fetch** to run `git fetch` and refresh that row's status. A spinner shows while it runs, and errors appear in the flyout.
+- **Favorites:** right-click a row, or swipe it left, and choose **Favorite** (or **Unfavorite**). Favorites get a star next to the name. The star button in the header narrows the list to favorites only; it stays on until you turn it off, and the filter box still applies within it.
 - **Worktrees:** `git worktree` checkouts are listed as their own entries, with the remote read from the main repo.
 - **Light dismiss:** the flyout hides when it loses focus or when you press Escape, and clicking the tray icon toggles it.
 - **Tray menu:** right-click the icon for Open, Settings and Exit.
@@ -27,7 +29,7 @@ Tray Git is a WinUI 3 app that lives in the Windows notification area. It has no
 
 Download the MSIX for your architecture from the [GitHub releases](../../releases) page. Release packages are signed with a self-signed certificate; install the `.cer` from the release into **Local Machine > Trusted People** before installing the MSIX.
 
-Requirements: Windows 10 1809 (build 17763) or later, or Windows 11, on x64 or ARM64. [Windows Terminal](https://aka.ms/terminal) is recommended but not required. Git itself isn't required: Tray Git reads `.git` files directly.
+Requirements: Windows 10 1809 (build 17763) or later, or Windows 11, on x64 or ARM64. [Windows Terminal](https://aka.ms/terminal) is recommended but not required. [Git](https://git-scm.com/download/win) must be on the PATH for the status segment and Fetch; without it the list still works, just without status.
 
 ## Setup
 
@@ -35,10 +37,10 @@ On first run the flyout opens with **Choose source folder**. Pick your folder an
 
 ## Privacy and footprint
 
-- Tray Git makes **no network calls**. The only thing that leaves your machine is the browser you open with the Remote button.
-- It reads only each repo's `.git/HEAD` and `.git/config`, and never runs git.
+- Tray Git makes **no network calls of its own**. The only things that leave your machine are the browser you open with the Remote button and the `git fetch` you start with Fetch, which uses your normal git remotes and credentials.
+- The list and scan read only each repo's `.git/HEAD` and `.git/config`. While the flyout is open, the status segment runs read-only `git diff HEAD --numstat` and `git status` in each repo (no locks taken, no files changed), at most every 30 seconds per repo.
 - The scan runs only while the flyout is open: when it opens and the last scan is over five minutes old, when you change the source folder, or when you press Rescan. Results are cached in the app's local folder (`repos.json`) so the list appears instantly.
-- Settings (the source folder and recent-use times) are stored in the app's local settings. Nothing is stored outside the app's package data.
+- Settings (the source folder, recent-use times, favorites and the favorites-only toggle) are stored in the app's local settings. Nothing is stored outside the app's package data.
 - When hidden for a minute, the flyout closes and returns its memory to Windows.
 
 ## Build from source
@@ -63,8 +65,8 @@ Releases are built with `build-msix-for-gh.ps1`, which produces signed x64 and A
 | `Views/TrayFlyoutWindow` | Borderless popup: placement, light dismiss, animation, idle close, page swap, and the folder picker (light dismiss pauses while it is open) |
 | `Views/FlyoutPage` | The repo list, filter, and actions |
 | `Views/SettingsPage` | Settings page shown in the flyout: source folder, Start with Windows, version |
-| `Core/` | Platform-free logic: `RepoScanner`, `GitMetadata` (`.git` parsing), `RemoteUrlPolicy` (remote → web URL), `RepoListPolicy` (filter and order) |
-| `Services/RepoStore`, `Services/RepoLauncher` | Scan cache, and the terminal / folder / remote launchers |
+| `Core/` | Platform-free logic: `RepoScanner`, `GitMetadata` (`.git` parsing), `RemoteUrlPolicy` (remote → web URL), `RepoListPolicy` (filter and order), `RepoStatus` (git output parsing) |
+| `Services/RepoStore`, `Services/RepoLauncher`, `Services/GitService` | Scan cache, the terminal / folder / remote launchers, and the git status and fetch runner |
 | `tests/TrayGit.Tests` | MSTest project that links `Core/` |
 
 ## License
