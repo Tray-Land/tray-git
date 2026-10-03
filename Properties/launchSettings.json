@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "TrayGit (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "TrayGit (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
