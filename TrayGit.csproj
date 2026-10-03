@@ -29,6 +29,8 @@
     <Content Include="Assets\Wide310x150Logo.scale-200.png" />
     <Content Include="Assets\AppIcon-dark.ico" />
     <Content Remove="branding\**" />
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
