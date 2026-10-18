@@ -1,8 +1,12 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using TrayGit.Core;
 using TrayGit.Services;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 
 namespace TrayGit.Views;
 
@@ -384,6 +388,119 @@ public sealed partial class FlyoutPage : Page, IDisposable
         if (RepoList.ItemsSource is List<GitRepo> { Count: > 0 } visible)
         {
             Run(RepoLauncher.OpenTerminal, visible[0]);
+        }
+    }
+
+    private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is GitRepo repo)
+        {
+            CopyPath(repo);
+        }
+    }
+
+    // Like Explorer's "Copy as path": the full path in quotes.
+    private void CopyPath(GitRepo repo)
+    {
+        try
+        {
+            DataPackage data = new();
+            data.SetText($"\"{repo.Path}\"");
+            Clipboard.SetContent(data);
+            Clipboard.Flush();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus($"Couldn't copy the path of {repo.Name}", ex.Message);
+        }
+    }
+
+    // Down from the filter box enters the list.
+    private void SearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Down && RepoList.Items.Count > 0)
+        {
+            e.Handled = true;
+            RepoList.SelectedIndex = 0;
+            FocusRow(0);
+        }
+    }
+
+    // Up/Down move between rows (ListView does that); Left/Right step through the row's actions.
+    private void RepoList_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        int index = RepoList.SelectedIndex;
+        switch (e.Key)
+        {
+            case VirtualKey.Up when index <= 0:
+                e.Handled = true;
+                RepoList.SelectedItem = null;
+                SearchBox.Focus(FocusState.Keyboard);
+                break;
+
+            case VirtualKey.Left or VirtualKey.Right when index >= 0:
+                e.Handled = true;
+                StepAction(index, e.Key == VirtualKey.Right ? 1 : -1);
+                break;
+
+            case VirtualKey.Enter when index >= 0 && FocusManager.GetFocusedElement(XamlRoot) is ListViewItem:
+                e.Handled = true;
+                Run(RepoLauncher.OpenTerminal, (GitRepo)RepoList.SelectedItem);
+                break;
+
+            case VirtualKey.C when index >= 0 && IsCtrlDown() && FocusManager.GetFocusedElement(XamlRoot) is not TextBox:
+                e.Handled = true;
+                CopyPath((GitRepo)RepoList.SelectedItem);
+                break;
+        }
+    }
+
+    private static bool IsCtrlDown() =>
+        InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+
+    private void FocusRow(int index)
+    {
+        if (RepoList.ContainerFromIndex(index) is not ListViewItem item)
+        {
+            RepoList.UpdateLayout();
+            item = (ListViewItem)RepoList.ContainerFromIndex(index);
+        }
+
+        item?.Focus(FocusState.Keyboard);
+    }
+
+    // The row itself is stop 0, then each enabled action button in visual order.
+    private void StepAction(int index, int delta)
+    {
+        if (RepoList.ContainerFromIndex(index) is not ListViewItem item)
+        {
+            return;
+        }
+
+        List<Button> buttons = [];
+        CollectButtons(item, buttons);
+        List<Control> stops = [item, .. buttons.Where(b => b.IsEnabled)];
+
+        object? focused = FocusManager.GetFocusedElement(XamlRoot);
+        int current = Math.Max(0, stops.FindIndex(s => ReferenceEquals(s, focused)));
+        int next = Math.Clamp(current + delta, 0, stops.Count - 1);
+        stops[next].Focus(FocusState.Keyboard);
+    }
+
+    private static void CollectButtons(DependencyObject parent, List<Button> buttons)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+            if (child is Button button)
+            {
+                buttons.Add(button);
+            }
+            else
+            {
+                CollectButtons(child, buttons);
+            }
         }
     }
 
