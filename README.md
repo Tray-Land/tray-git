@@ -27,7 +27,11 @@ Tray Git is a WinUI 3 app that lives in the Windows notification area. It has no
 
 ## Install
 
-Download the MSIX for your architecture from the [GitHub releases](../../releases) page. Release packages are signed with a self-signed certificate; install the `.cer` from the release into **Local Machine > Trusted People** before installing the MSIX.
+**[Install Tray Git](https://github.com/Tray-Land/tray-git/releases/latest/download/TrayGit.appinstaller)** (opens the `.appinstaller` with Windows App Installer).
+
+Windows picks the right build for your PC (x64 or ARM64), installs the Windows App Runtime if it is missing, and keeps Tray Git up to date from the newest stable release: it checks when the app starts and in the background, and downloads only the parts of the package that changed. Release packages are signed with a self-signed certificate; install the `.cer` from the release into **Local Machine > Trusted People** first.
+
+You can also download `TrayGit_<version>.msixbundle` from the [releases](../../releases) page. It contains both architectures and also updates itself, but it does not install the Windows App Runtime for you.
 
 Requirements: Windows 10 1809 (build 17763) or later, or Windows 11, on x64 or ARM64. [Windows Terminal](https://aka.ms/terminal) is recommended but not required. [Git](https://git-scm.com/download/win) must be on the PATH for the status segment and Fetch; without it the list still works, just without status.
 
@@ -55,7 +59,7 @@ dotnet test tests\TrayGit.Tests
 
 Look in the taskbar overflow (^) if the tray icon is hidden.
 
-Releases are built with `build-msix-for-gh.ps1`, which produces signed x64 and ARM64 MSIX packages and a draft GitHub release.
+Releases are built with `build-msix-for-gh.ps1`, which builds x64 and ARM64 packages, bundles them into one signed `.msixbundle`, writes the `.appinstaller` feed, checks the bundle, and creates a draft GitHub release. The feed's `latest/download` link starts working when you publish the draft as the latest (non-pre-release) release.
 
 ## Project layout
 
