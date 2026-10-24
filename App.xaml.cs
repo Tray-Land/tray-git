@@ -26,6 +26,7 @@ public partial class App : Application
     private EventWaitHandle? _showEvent;
     private RegisteredWaitHandle? _showWait;
     private TrayIcon? _trayIcon;
+    private GlobalHotKeyService? _hotKey;
     private TrayFlyoutWindow? _flyout;
     private DispatcherQueue? _dispatcher;
     private bool _isExiting;
@@ -73,6 +74,10 @@ public partial class App : Application
 
         InitializeTrayIcon();
 
+        _hotKey = new GlobalHotKeyService(() => _dispatcher.TryEnqueue(ToggleFlyoutFromHotKey));
+        SettingsService.HotKeyChanged += (_, _) => _dispatcher.TryEnqueue(ApplyHotKey);
+        ApplyHotKey();
+
         // First run: show where the app lives instead of launching into silence.
         if (!SettingsService.HasLaunchedBefore)
         {
@@ -106,6 +111,38 @@ public partial class App : Application
     }
 
     public void HideFlyout() => _flyout?.HidePopup();
+
+    /// <summary>
+    /// True when the global hotkey is on but Windows refused it, usually because another app owns
+    /// the combination.
+    /// </summary>
+    public bool HotKeyConflicts => SettingsService.HotKeyEnabled && _hotKey is { IsRegistered: false };
+
+    // The hotkey opens the flyout on the repo list with the filter focused (FlyoutPage.OnShown),
+    // and pressing it again while the flyout is up closes it.
+    private void ToggleFlyoutFromHotKey()
+    {
+        if (_flyout?.IsPopupVisible == true)
+        {
+            HideFlyout();
+        }
+        else
+        {
+            ShowFlyout();
+        }
+    }
+
+    private void ApplyHotKey()
+    {
+        if (SettingsService.HotKeyEnabled)
+        {
+            _hotKey?.Register(SettingsService.HotKey);
+        }
+        else
+        {
+            _hotKey?.Unregister();
+        }
+    }
 
     /// <summary>Shows the flyout on its settings page.</summary>
     public void ShowSettings()
@@ -200,6 +237,8 @@ public partial class App : Application
             _trayIcon = null;
         }
 
+        _hotKey?.Dispose();
+        _hotKey = null;
         _showWait?.Unregister(null);
         _showEvent?.Dispose();
         _singleInstanceMutex?.ReleaseMutex();

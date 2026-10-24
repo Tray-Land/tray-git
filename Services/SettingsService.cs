@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
+using TrayGit.Core;
 using Windows.Storage;
 
 namespace TrayGit.Services;
@@ -65,6 +66,69 @@ internal static class SettingsService
     {
         get => Get(nameof(ShowFavoritesOnly), false);
         set => Set(nameof(ShowFavoritesOnly), value);
+    }
+
+    /// <summary>Actions the user defined, each a command run in a new terminal.</summary>
+    public static List<ActionDef> CustomActions
+    {
+        get => GetJson(nameof(CustomActions), AppJsonContext.Default.ActionDefArray) is { } actions ? [.. actions] : [];
+        set => SetJson(nameof(CustomActions), value.ToArray(), AppJsonContext.Default.ActionDefArray);
+    }
+
+    /// <summary>Ids of the actions shown as buttons on each repo row.</summary>
+    public static List<string> ToolbarActionIds
+    {
+        get => GetJson(nameof(ToolbarActionIds), AppJsonContext.Default.StringArray) is { } ids ? [.. ids] : [.. ActionCatalog.DefaultToolbar];
+        set => SetJson(nameof(ToolbarActionIds), value.ToArray(), AppJsonContext.Default.StringArray);
+    }
+
+    /// <summary>What Enter does on the top match in the filter box, or the selected row.</summary>
+    public static string EnterActionId
+    {
+        get => Get(nameof(EnterActionId), ActionCatalog.DefaultEnterId);
+        set => Set(nameof(EnterActionId), value);
+    }
+
+    /// <summary>What a single click on a row does. Nothing by default.</summary>
+    public static string ClickActionId
+    {
+        get => Get(nameof(ClickActionId), ActionCatalog.DefaultClickId);
+        set => Set(nameof(ClickActionId), value);
+    }
+
+    public static string DoubleClickActionId
+    {
+        get => Get(nameof(DoubleClickActionId), ActionCatalog.DefaultDoubleClickId);
+        set => Set(nameof(DoubleClickActionId), value);
+    }
+
+    /// <summary>Raised on the setter's thread when the global hotkey is switched or rebound.</summary>
+    public static event EventHandler? HotKeyChanged;
+
+    /// <summary>Whether the global hotkey that opens the flyout is on. Off by default.</summary>
+    public static bool HotKeyEnabled
+    {
+        get => Get(nameof(HotKeyEnabled), false);
+        set
+        {
+            if (value == HotKeyEnabled)
+            {
+                return;
+            }
+
+            Set(nameof(HotKeyEnabled), value);
+            HotKeyChanged?.Invoke(null, EventArgs.Empty);
+        }
+    }
+
+    public static HotKey HotKey
+    {
+        get => HotKey.TryParse(Get<string?>(nameof(HotKey), null), out HotKey hotKey) ? hotKey : HotKey.Default;
+        set
+        {
+            Set(nameof(HotKey), value.Serialize());
+            HotKeyChanged?.Invoke(null, EventArgs.Empty);
+        }
     }
 
     public static T? GetJson<T>(string key, JsonTypeInfo<T> typeInfo)
