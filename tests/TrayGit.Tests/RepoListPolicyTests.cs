@@ -47,8 +47,8 @@ public sealed class RepoListPolicyTests
     [TestMethod]
     public void DescribesBranchAndParent()
     {
-        Assert.AreEqual("main · apps", RepoListPolicy.Describe(Repo("x", @"apps\x") with { Branch = "main" }));
-        Assert.AreEqual("main", RepoListPolicy.Describe(Repo("x") with { Branch = "main" }));
+        Assert.AreEqual("main · apps", RepoListPolicy.Describe(Repo("x", @"apps\x", "main")));
+        Assert.AreEqual("main", RepoListPolicy.Describe(Repo("x", null, "main")));
         Assert.AreEqual("apps", RepoListPolicy.Describe(Repo("x", @"apps\x")));
         Assert.AreEqual("", RepoListPolicy.Describe(Repo("x")));
     }
@@ -69,6 +69,6 @@ public sealed class RepoListPolicyTests
     private static string[] Names(string query) =>
         RepoListPolicy.Arrange(Repos, new Dictionary<string, long>(), query).Select(r => r.Name).ToArray();
 
-    private static GitRepo Repo(string name, string? relative = null) =>
-        new(name, $@"C:\src\{relative ?? name}", relative ?? name, null, null, null);
+    private static GitRepo Repo(string name, string? relative = null, string? branch = null) =>
+        new(name, $@"C:\src\{relative ?? name}", relative ?? name, branch, null, null);
 }

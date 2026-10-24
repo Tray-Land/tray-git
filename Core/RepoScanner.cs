@@ -102,11 +102,11 @@ public static class RepoScanner
         string remote = GitMetadata.ReadRemoteUrl(gitDir) ?? "";
         string name = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         return new GitRepo(
-            Name: string.IsNullOrEmpty(name) ? dir : name,
-            Path: dir,
-            RelativePath: Path.GetRelativePath(root, dir),
-            Branch: GitMetadata.ReadBranch(gitDir),
-            RemoteUrl: remote.Length > 0 ? remote : null,
-            WebUrl: RemoteUrlPolicy.ToWebUrl(remote));
+            name: string.IsNullOrEmpty(name) ? dir : name,
+            path: dir,
+            relativePath: Path.GetRelativePath(root, dir),
+            branch: GitMetadata.ReadBranch(gitDir),
+            remoteUrl: remote.Length > 0 ? remote : null,
+            webUrl: RemoteUrlPolicy.ToWebUrl(remote));
     }
 }
