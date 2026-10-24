@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:core="using:TrayGit.Core"
+    xmlns:views="using:TrayGit.Views"
     Background="Transparent">
 
     <Grid Padding="16,12,12,16" RowSpacing="12">
@@ -61,7 +62,7 @@
             x:Name="SearchBox"
             Grid.Row="1"
             AutomationProperties.Name="Filter repos"
-            PlaceholderText="Filter repos, Enter opens a terminal"
+            PlaceholderText="Filter repos"
             PreviewKeyDown="SearchBox_PreviewKeyDown"
             QueryIcon="Find"
             QuerySubmitted="SearchBox_QuerySubmitted"
@@ -79,7 +80,9 @@
             x:Name="RepoList"
             Grid.Row="3"
             Margin="-12,0,-8,0"
+            GotFocus="RepoList_GotFocus"
             IsItemClickEnabled="False"
+            LostFocus="RepoList_LostFocus"
             PreviewKeyDown="RepoList_PreviewKeyDown"
             SelectionMode="Single">
             <ListView.ItemContainerStyle>
@@ -120,6 +123,9 @@
                         Background="Transparent"
                         ColumnSpacing="2"
                         DoubleTapped="RepoRow_DoubleTapped"
+                        PointerEntered="RepoRow_PointerEntered"
+                        PointerExited="RepoRow_PointerExited"
+                        Tapped="RepoRow_Tapped"
                         ToolTipService.ToolTip="{x:Bind Path}">
                         <Grid.ContextFlyout>
                             <MenuFlyout>
@@ -130,6 +136,24 @@
                                     Text="Fetch">
                                     <MenuFlyoutItem.Icon>
                                         <FontIcon Glyph="&#xE895;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="PullMenuItem_Click"
+                                    IsEnabled="{x:Bind CanFetch, Mode=OneWay}"
+                                    Tag="{x:Bind}"
+                                    Text="Pull">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE896;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem
+                                    Click="PushMenuItem_Click"
+                                    IsEnabled="{x:Bind CanFetch, Mode=OneWay}"
+                                    Tag="{x:Bind}"
+                                    Text="Push">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE898;" />
                                     </MenuFlyoutItem.Icon>
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
@@ -152,8 +176,6 @@
                         </Grid.ContextFlyout>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel VerticalAlignment="Center">
@@ -233,31 +255,46 @@
                                     TextWrapping="NoWrap" />
                             </Grid>
                         </StackPanel>
-                        <Button
+                        <!--  The buttons are the user's choice (Settings), so they are filled in per row from code  -->
+                        <ItemsControl
                             Grid.Column="1"
-                            AutomationProperties.Name="Open terminal"
-                            Click="TerminalButton_Click"
-                            Style="{StaticResource FlyoutIconButtonStyle}"
-                            ToolTipService.ToolTip="Open terminal">
-                            <FontIcon FontSize="14" Glyph="&#xE756;" />
-                        </Button>
-                        <Button
-                            Grid.Column="2"
-                            AutomationProperties.Name="Open folder"
-                            Click="FolderButton_Click"
-                            Style="{StaticResource FlyoutIconButtonStyle}"
-                            ToolTipService.ToolTip="Open folder">
-                            <FontIcon FontSize="14" Glyph="&#xE838;" />
-                        </Button>
-                        <Button
-                            Grid.Column="3"
-                            AutomationProperties.Name="Open remote"
-                            Click="RemoteButton_Click"
-                            IsEnabled="{x:Bind HasWebUrl}"
-                            Style="{StaticResource FlyoutIconButtonStyle}"
-                            ToolTipService.ToolTip="{x:Bind RemoteTooltip}">
-                            <FontIcon FontSize="14" Glyph="&#xE774;" />
-                        </Button>
+                            DataContextChanged="ActionStrip_DataContextChanged"
+                            IsTabStop="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="core:RepoActionItem">
+                                    <!--  Faded out (not collapsed) unless the row is first, hovered or focused, so focus can still reach it  -->
+                                    <Button
+                                        AutomationProperties.Name="{x:Bind Name}"
+                                        Click="ActionButton_Click"
+                                        IsEnabled="{x:Bind IsEnabled}"
+                                        Opacity="{x:Bind Opacity, Mode=OneWay}"
+                                        Style="{StaticResource FlyoutIconButtonStyle}"
+                                        ToolTipService.ToolTip="{x:Bind Tooltip}">
+                                        <Grid>
+                                            <Image
+                                                Width="16"
+                                                Height="16"
+                                                Source="{x:Bind views:ActionIcons.For(Image)}"
+                                                Visibility="{x:Bind HasImage}" />
+                                            <FontIcon
+                                                FontSize="14"
+                                                Glyph="{x:Bind Glyph}"
+                                                Visibility="{x:Bind HasGlyph}" />
+                                            <TextBlock
+                                                FontSize="11"
+                                                FontWeight="SemiBold"
+                                                Text="{x:Bind Badge}"
+                                                Visibility="{x:Bind HasBadge}" />
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </Grid>
                     </SwipeControl>
                 </DataTemplate>

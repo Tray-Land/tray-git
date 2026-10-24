@@ -33,6 +33,19 @@ public sealed partial class FlyoutPage : Page, IDisposable
     private bool _isVisible;
     private HashSet<string> _favorites = SettingsService.Favorites;
 
+    // How long a click waits for a second tap before it counts as a single click.
+    private static readonly TimeSpan DoubleClickWindow = TimeSpan.FromMilliseconds(400);
+
+    private List<ActionDef> _toolbar = [];
+    private ActionDef _enterAction = ActionCatalog.None;
+    private ActionDef _clickAction = ActionCatalog.None;
+    private ActionDef _doubleClickAction = ActionCatalog.None;
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _clickTimer;
+    private readonly Dictionary<string, List<RepoActionItem>> _rowItems = new(StringComparer.OrdinalIgnoreCase);
+    private string? _hoverPath;
+    private string? _focusPath;
+    private GitRepo? _pendingClick;
+
     public FlyoutPage()
     {
         InitializeComponent();
@@ -49,6 +62,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
 
         SearchBox.Text = "";
+        LoadActions();
         _favorites = SettingsService.Favorites;
         FavoritesToggle.IsChecked = SettingsService.ShowFavoritesOnly;
         UpdateFavoritesToggleIcon();
@@ -57,6 +71,20 @@ public sealed partial class FlyoutPage : Page, IDisposable
         // Coming back from settings, the page isn't in the tree yet; focus once it is.
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low,
             () => SearchBox.Focus(FocusState.Programmatic));
+    }
+
+    /// <summary>Clears the filter and returns focus to it. False when there was nothing to clear.</summary>
+    public bool ClearFilter()
+    {
+        if (SearchBox.Text.Length == 0)
+        {
+            return false;
+        }
+
+        SearchBox.Text = "";
+        ShowList();
+        SearchBox.Focus(FocusState.Programmatic);
+        return true;
     }
 
     /// <summary>The flyout hid: stop listening and abandon any scan in flight.</summary>
@@ -68,8 +96,23 @@ public sealed partial class FlyoutPage : Page, IDisposable
             SettingsService.SourceFolderChanged -= OnSourceFolderChanged;
         }
 
+        _clickTimer?.Stop();
+        _pendingClick = null;
+        _hoverPath = null;
+        _focusPath = null;
         CancelScan();
         CancelStatusRead();
+    }
+
+    // The user's choices, read each time the flyout opens so Settings changes apply at once.
+    private void LoadActions()
+    {
+        List<ActionDef> custom = SettingsService.CustomActions;
+        _toolbar = ActionCatalog.Toolbar(SettingsService.ToolbarActionIds, custom);
+        _enterAction = ActionCatalog.Resolve(SettingsService.EnterActionId, custom, ActionCatalog.DefaultEnterId);
+        _clickAction = ActionCatalog.Resolve(SettingsService.ClickActionId, custom, ActionCatalog.DefaultClickId);
+        _doubleClickAction = ActionCatalog.Resolve(SettingsService.DoubleClickActionId, custom, ActionCatalog.DefaultDoubleClickId);
+        SearchBox.PlaceholderText = _enterAction.Kind == ActionKind.None ? "Filter repos" : $"Filter repos, Enter: {_enterAction.Name}";
     }
 
     // A fetch the user started keeps going when the flyout hides; closing the window ends it.
@@ -239,7 +282,14 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    private async Task FetchAsync(GitRepo repo)
+    private Task FetchAsync(GitRepo repo) => RunGitAsync(repo, "fetch", GitService.FetchAsync);
+
+    private Task PullAsync(GitRepo repo) => RunGitAsync(repo, "pull", GitService.PullAsync);
+
+    private Task PushAsync(GitRepo repo) => RunGitAsync(repo, "push", GitService.PushAsync);
+
+    // Fetch, pull and push share the row's busy spinner, so only one runs per repo at a time.
+    private async Task RunGitAsync(GitRepo repo, string verb, Func<string, CancellationToken, Task> action)
     {
         if (repo.IsFetching)
         {
@@ -249,7 +299,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         repo.SetFetching(true);
         try
         {
-            await GitService.FetchAsync(repo.Path, _fetchCts.Token);
+            await action(repo.Path, _fetchCts.Token);
             if (await GitService.ReadStatusAsync(repo.Path, _fetchCts.Token) is { } status)
             {
                 ApplyStatus(repo.Path, status);
@@ -262,7 +312,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
         catch (Exception ex)
         {
-            ShowStatus($"Couldn't fetch {repo.Name}", ex.Message);
+            ShowStatus($"Couldn't {verb} {repo.Name}", ex.Message);
         }
         finally
         {
@@ -337,11 +387,28 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
+    private void PullMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is GitRepo repo)
+        {
+            _ = PullAsync(repo);
+        }
+    }
+
+    private void PushMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is GitRepo repo)
+        {
+            _ = PushAsync(repo);
+        }
+    }
+
     private void ShowList()
     {
         string? root = SettingsService.SourceFolder;
         bool favoritesOnly = FavoritesToggle.IsChecked == true;
         List<GitRepo> visible = RepoListPolicy.Arrange(_repos, SettingsService.LastUsed, SearchBox.Text, favoritesOnly ? _favorites : null);
+        _rowItems.Clear();
         RepoList.ItemsSource = visible;
 
         bool configured = !string.IsNullOrEmpty(root);
@@ -382,12 +449,12 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    // Enter opens a terminal in the top match: type a few letters, press Enter, you're there.
+    // Enter acts on the top match: type a few letters, press Enter, you're there.
     private void SearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
         if (RepoList.ItemsSource is List<GitRepo> { Count: > 0 } visible)
         {
-            Run(RepoLauncher.OpenTerminal, visible[0]);
+            Perform(_enterAction, visible[0]);
         }
     }
 
@@ -415,10 +482,19 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    // Down from the filter box enters the list.
+    // Down from the filter box enters the list. Escape is handled here because the box consumes it
+    // before the window's accelerator sees it: clear the text first, then hide.
     private void SearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
-        if (e.Key == VirtualKey.Down && RepoList.Items.Count > 0)
+        if (e.Key == VirtualKey.Escape)
+        {
+            e.Handled = true;
+            if (!ClearFilter())
+            {
+                App.Current.HideFlyout();
+            }
+        }
+        else if (e.Key == VirtualKey.Down && RepoList.Items.Count > 0)
         {
             e.Handled = true;
             RepoList.SelectedIndex = 0;
@@ -445,7 +521,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
 
             case VirtualKey.Enter when index >= 0 && FocusManager.GetFocusedElement(XamlRoot) is ListViewItem:
                 e.Handled = true;
-                Run(RepoLauncher.OpenTerminal, (GitRepo)RepoList.SelectedItem);
+                Perform(_enterAction, (GitRepo)RepoList.SelectedItem);
                 break;
 
             case VirtualKey.C when index >= 0 && IsCtrlDown() && FocusManager.GetFocusedElement(XamlRoot) is not TextBox:
@@ -504,44 +580,181 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    private void TerminalButton_Click(object sender, RoutedEventArgs e) => Run(RepoLauncher.OpenTerminal, sender);
-
-    private void FolderButton_Click(object sender, RoutedEventArgs e) => Run(RepoLauncher.OpenFolder, sender);
-
-    private void RepoRow_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e) => Run(RepoLauncher.OpenFolder, sender);
-
-    private async void RemoteButton_Click(object sender, RoutedEventArgs e)
+    // Each row's buttons are built from the user's toolbar choice.
+    private void ActionStrip_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
     {
-        if (RepoOf(sender) is { } repo)
+        if (sender is ItemsControl strip && args.NewValue is GitRepo repo)
         {
-            App.Current.HideFlyout();
-            await RepoLauncher.OpenRemoteAsync(repo);
+            List<RepoActionItem> items = _toolbar.Select(action => new RepoActionItem(action, repo, IsExpandedFor(repo.Path))).ToList();
+            _rowItems[repo.Path] = items;
+            strip.ItemsSource = items;
         }
     }
 
-    private void Run(Action<GitRepo> action, object sender)
+    // Only one row shows its buttons: the keyboard-focused row, else the hovered row, else the first.
+    private bool IsExpandedFor(string path)
     {
-        if (RepoOf(sender) is { } repo)
+        string? active = _focusPath ?? _hoverPath ?? (RepoList.ItemsSource is List<GitRepo> { Count: > 0 } visible ? visible[0].Path : null);
+        return string.Equals(path, active, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void RefreshStrips()
+    {
+        foreach ((string path, List<RepoActionItem> items) in _rowItems)
         {
-            Run(action, repo);
+            bool expanded = IsExpandedFor(path);
+            foreach (RepoActionItem item in items)
+            {
+                item.IsExpanded = expanded;
+            }
         }
     }
 
-    private void Run(Action<GitRepo> action, GitRepo repo)
+    private void RepoRow_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        try
+        _hoverPath = RepoOfRow(sender)?.Path;
+        RefreshStrips();
+    }
+
+    private void RepoRow_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        if (string.Equals(_hoverPath, RepoOfRow(sender)?.Path, StringComparison.OrdinalIgnoreCase))
         {
-            App.Current.HideFlyout();
-            action(repo);
-        }
-        catch (Exception ex)
-        {
-            App.Current.ShowFlyout();
-            ShowStatus($"Couldn't open {repo.Name}", ex.Message);
+            _hoverPath = null;
+            RefreshStrips();
         }
     }
 
-    private static GitRepo? RepoOf(object sender) => (sender as FrameworkElement)?.DataContext as GitRepo;
+    // Focus on the row or any of its buttons (not a mouse click) keeps the row expanded.
+    private void RepoList_GotFocus(object sender, RoutedEventArgs e)
+    {
+        _focusPath = e.OriginalSource is Control { FocusState: FocusState.Keyboard } ? RowPathOf(e.OriginalSource) : null;
+        RefreshStrips();
+    }
+
+    private void RepoList_LostFocus(object sender, RoutedEventArgs e)
+    {
+        _focusPath = null;
+        RefreshStrips();
+    }
+
+    private static string? RowPathOf(object? source)
+    {
+        for (DependencyObject? d = source as DependencyObject; d is not null; d = VisualTreeHelper.GetParent(d))
+        {
+            if (d is ListViewItem { Content: GitRepo repo })
+            {
+                return repo.Path;
+            }
+        }
+
+        return null;
+    }
+
+    private void ActionButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is RepoActionItem item)
+        {
+            Perform(item.Action, item.Repo);
+        }
+    }
+
+    private void RepoRow_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (_clickAction.Kind == ActionKind.None || IsFromButton(e.OriginalSource) || RepoOfRow(sender) is not { } repo)
+        {
+            return;
+        }
+
+        if (_doubleClickAction.Kind == ActionKind.None)
+        {
+            Perform(_clickAction, repo);
+            return;
+        }
+
+        // Both are set: hold the click back to see whether a second tap follows.
+        _pendingClick = repo;
+        if (_clickTimer is null)
+        {
+            _clickTimer = DispatcherQueue.CreateTimer();
+            _clickTimer.IsRepeating = false;
+            _clickTimer.Interval = DoubleClickWindow;
+            _clickTimer.Tick += (_, _) =>
+            {
+                if (_pendingClick is { } pending)
+                {
+                    _pendingClick = null;
+                    Perform(_clickAction, pending);
+                }
+            };
+        }
+
+        _clickTimer.Stop();
+        _clickTimer.Start();
+    }
+
+    private void RepoRow_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        _clickTimer?.Stop();
+        _pendingClick = null;
+        if (!IsFromButton(e.OriginalSource) && RepoOfRow(sender) is { } repo)
+        {
+            Perform(_doubleClickAction, repo);
+        }
+    }
+
+    // A tap on one of the row's own buttons is that button's click, not the row's.
+    private static bool IsFromButton(object? source)
+    {
+        for (DependencyObject? d = source as DependencyObject; d is not null and not ListViewItem; d = VisualTreeHelper.GetParent(d))
+        {
+            if (d is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static GitRepo? RepoOfRow(object sender) => (sender as FrameworkElement)?.DataContext as GitRepo;
+
+    private void Perform(ActionDef action, GitRepo repo)
+    {
+        switch (action.Kind)
+        {
+            case ActionKind.None:
+                return;
+
+            case ActionKind.Remote:
+                if (repo.HasWebUrl)
+                {
+                    _ = OpenRemoteAsync(repo);
+                }
+
+                return;
+
+            default:
+                try
+                {
+                    App.Current.HideFlyout();
+                    RepoLauncher.Launch(action, repo);
+                }
+                catch (Exception ex)
+                {
+                    App.Current.ShowFlyout();
+                    ShowStatus($"Couldn't open {repo.Name}", ex.Message);
+                }
+
+                return;
+        }
+    }
+
+    private async Task OpenRemoteAsync(GitRepo repo)
+    {
+        App.Current.HideFlyout();
+        await RepoLauncher.OpenRemoteAsync(repo);
+    }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e) => LoadAndMaybeScan(force: true);
 

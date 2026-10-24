@@ -141,7 +141,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
 
     public void ShowMainPage()
     {
-        if (PageHost.Content == _page)
+        if (ReferenceEquals(PageHost.Content, _page))
         {
             return;
         }
@@ -431,7 +431,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         return className.SequenceEqual("Xaml_WindowedPopupClass") || className.SequenceEqual("#32768");
     }
 
-    // Escape and Back go back from settings first, then hide.
+    // Escape goes back from settings first, then clears the filter, then hides.
     private void Escape_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
@@ -439,7 +439,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         {
             ShowMainPage();
         }
-        else
+        else if (!_page.ClearFilter())
         {
             HidePopup();
         }

@@ -56,20 +56,31 @@ internal static class GitService
     }
 
     /// <summary>Runs <c>git fetch</c>; throws with git's message when it fails.</summary>
-    public static async Task FetchAsync(string repoPath, CancellationToken cancellationToken)
+    public static Task FetchAsync(string repoPath, CancellationToken cancellationToken) =>
+        RunNetworkAsync(repoPath, "fetch", ["fetch", "--quiet"], cancellationToken);
+
+    /// <summary>Runs <c>git pull --ff-only</c>, so it never creates a merge or rebases behind the user's back.</summary>
+    public static Task PullAsync(string repoPath, CancellationToken cancellationToken) =>
+        RunNetworkAsync(repoPath, "pull", ["pull", "--ff-only", "--quiet"], cancellationToken);
+
+    /// <summary>Runs <c>git push</c>; throws with git's message when it fails.</summary>
+    public static Task PushAsync(string repoPath, CancellationToken cancellationToken) =>
+        RunNetworkAsync(repoPath, "push", ["push", "--quiet"], cancellationToken);
+
+    private static async Task RunNetworkAsync(string repoPath, string verb, string[] arguments, CancellationToken cancellationToken)
     {
-        GitResult? result = await RunAsync(repoPath, ["fetch", "--quiet"], FetchTimeout, cancellationToken)
+        GitResult? result = await RunAsync(repoPath, arguments, FetchTimeout, cancellationToken)
             ?? throw new InvalidOperationException("git was not found. Install Git for Windows and make sure it is on the PATH.");
 
         if (result.TimedOut)
         {
-            throw new TimeoutException("git fetch took longer than two minutes and was stopped.");
+            throw new TimeoutException($"git {verb} took longer than two minutes and was stopped.");
         }
 
         if (result.ExitCode != 0)
         {
             string message = result.Error.Trim();
-            throw new InvalidOperationException(message.Length > 0 ? message : $"git fetch exited with code {result.ExitCode}.");
+            throw new InvalidOperationException(message.Length > 0 ? message : $"git {verb} exited with code {result.ExitCode}.");
         }
     }
 

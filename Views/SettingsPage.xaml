@@ -84,6 +84,118 @@
                         OnContent=""
                         Toggled="StartupToggle_Toggled" />
                 </Grid>
+
+                <!--  Global hotkey: toggle, then a button that records the next key combination  -->
+                <StackPanel
+                    Padding="16,12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Spacing="8">
+                    <Grid ColumnSpacing="12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Global hotkey" />
+                            <TextBlock
+                                x:Name="HotKeyDescription"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Open the list from anywhere, ready to search."
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                        <ToggleSwitch
+                            x:Name="HotKeyToggle"
+                            Grid.Column="1"
+                            MinWidth="0"
+                            AutomationProperties.Name="Global hotkey"
+                            OffContent=""
+                            OnContent=""
+                            Toggled="HotKeyToggle_Toggled" />
+                    </Grid>
+                    <Button
+                        x:Name="HotKeyButton"
+                        AutomationProperties.Name="Change hotkey"
+                        Click="HotKeyButton_Click"
+                        LostFocus="HotKeyButton_LostFocus"
+                        PreviewKeyDown="HotKeyButton_PreviewKeyDown" />
+                </StackPanel>
+
+                <!--  Row buttons: tick the actions to show; the list is built in code  -->
+                <StackPanel
+                    Padding="16,12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Spacing="8">
+                    <StackPanel>
+                        <TextBlock Text="Row buttons" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Choose the buttons shown on each repo. The AI tools open a terminal in the repo and start the tool."
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel x:Name="ActionsPanel" />
+                    <TextBlock
+                        Margin="0,4,0,0"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="Add a custom action" />
+                    <TextBox
+                        x:Name="CustomNameBox"
+                        AutomationProperties.Name="Custom action name"
+                        PlaceholderText="Name, such as Aider" />
+                    <TextBox
+                        x:Name="CustomCommandBox"
+                        AutomationProperties.Name="Custom action command"
+                        PlaceholderText="Command, such as aider" />
+                    <Button
+                        x:Name="AddActionButton"
+                        Click="AddActionButton_Click"
+                        Content="Add" />
+                </StackPanel>
+
+                <!--  Interaction: what Enter, click and double-click do on a repo  -->
+                <StackPanel
+                    Padding="16,12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Spacing="8">
+                    <TextBlock Text="Interaction" />
+                    <ComboBox
+                        x:Name="EnterCombo"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Enter does"
+                        DisplayMemberPath="Name"
+                        Header="Enter"
+                        SelectionChanged="Combo_SelectionChanged" />
+                    <ComboBox
+                        x:Name="ClickCombo"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Click does"
+                        DisplayMemberPath="Name"
+                        Header="Click"
+                        SelectionChanged="Combo_SelectionChanged" />
+                    <ComboBox
+                        x:Name="DoubleClickCombo"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="Double-click does"
+                        DisplayMemberPath="Name"
+                        Header="Double-click"
+                        SelectionChanged="Combo_SelectionChanged" />
+                    <TextBlock
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Text="With both click and double-click set, a click waits a moment to see whether a second one follows."
+                        TextWrapping="Wrap" />
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 
