@@ -482,8 +482,8 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    // Down from the filter box enters the list. Escape is handled here because the box consumes it
-    // before the window's accelerator sees it: clear the text first, then hide.
+    // Down enters the list; Right at the end of the filter enters the first row's actions.
+    // The box consumes Escape before the window's accelerator sees it.
     private void SearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key == VirtualKey.Escape)
@@ -499,6 +499,19 @@ public sealed partial class FlyoutPage : Page, IDisposable
             e.Handled = true;
             RepoList.SelectedIndex = 0;
             FocusRow(0);
+        }
+        else if (e.Key == VirtualKey.Right
+            && FocusManager.GetFocusedElement(XamlRoot) is TextBox textBox
+            && SearchNavigationPolicy.EnterFirstResultActions(
+                textBox.Text.Length, textBox.SelectionStart, textBox.SelectionLength,
+                IsKeyDown(VirtualKey.Control) || IsKeyDown(VirtualKey.Shift) || IsKeyDown(VirtualKey.Menu)
+                    || IsKeyDown(VirtualKey.LeftWindows) || IsKeyDown(VirtualKey.RightWindows),
+                RepoList.Items.Count > 0))
+        {
+            e.Handled = true;
+            RepoList.SelectedIndex = 0;
+            FocusRow(0);
+            StepAction(0, 1);
         }
     }
 
@@ -531,8 +544,10 @@ public sealed partial class FlyoutPage : Page, IDisposable
         }
     }
 
-    private static bool IsCtrlDown() =>
-        InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+    private static bool IsCtrlDown() => IsKeyDown(VirtualKey.Control);
+
+    private static bool IsKeyDown(VirtualKey key) =>
+        InputKeyboardSource.GetKeyStateForCurrentThread(key).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
     private void FocusRow(int index)
     {
