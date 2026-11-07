@@ -153,6 +153,10 @@ internal static class WindowPlacementService
 
     private static int ToPhysical(int logical, uint dpi) => (int)Math.Ceiling(logical * dpi / 96.0);
 
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2075",
+        Justification = "WinUIEx owns the boxed HWND type. If trimming removes its private Value field, placement safely falls back to the cursor.")]
     private static nint ReadHandle(object boxed)
     {
         // WinUIEx stores its own CsWin32 HWND struct; read its single pointer-sized field.
