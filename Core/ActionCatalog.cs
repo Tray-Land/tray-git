@@ -1,5 +1,3 @@
-using System.ComponentModel;
-
 namespace TrayGit.Core;
 
 public static class ActionKind
@@ -31,7 +29,7 @@ public static class ActionCatalog
     public static readonly ActionDef None = new(NoneId, "Do nothing", ActionKind.None);
 
     /// <summary>The plain actions, then the AI coding CLIs. Only the plain ones are buttons by default.</summary>
-    public static readonly IReadOnlyList<ActionDef> BuiltIn =
+    public static readonly IReadOnlyList<ActionDef> BuiltIn = (ActionDef[])
     [
         new(TerminalId, "Open terminal", ActionKind.Terminal, Glyph: ""),
         new(FolderId, "Open folder", ActionKind.Folder, Glyph: ""),
@@ -43,7 +41,8 @@ public static class ActionCatalog
         new("gemini", "Open in Gemini", ActionKind.Command, "gemini", Image: "Assets/ActionIcons/gemini.svg"),
     ];
 
-    public static readonly IReadOnlyList<string> DefaultToolbar = [TerminalId, FolderId, RemoteId];
+    public static readonly IReadOnlyList<string> DefaultToolbar =
+        (string[])[TerminalId, FolderId, RemoteId];
 
     public const string DefaultEnterId = TerminalId;
     public const string DefaultClickId = NoneId;
@@ -129,56 +128,4 @@ public static class ActionCatalog
             _ => $"{char.ToUpperInvariant(words[0][0])}{char.ToUpperInvariant(words[1][0])}",
         };
     }
-}
-
-/// <summary>An action bound to one repo row, as the row's button template sees it.</summary>
-public sealed class RepoActionItem(ActionDef action, GitRepo repo, bool expanded) : INotifyPropertyChanged
-{
-    private bool _expanded = expanded;
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    /// <summary>
-    /// True shows the button; false fades it out. It stays in the layout and the focus order either
-    /// way, so row height stays stable and arrow-key focus can still reach it.
-    /// </summary>
-    public bool IsExpanded
-    {
-        get => _expanded;
-        set
-        {
-            if (_expanded == value)
-            {
-                return;
-            }
-
-            _expanded = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExpanded)));
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Opacity)));
-        }
-    }
-
-    public double Opacity => _expanded ? 1 : 0;
-
-    public ActionDef Action => action;
-
-    public GitRepo Repo => repo;
-
-    public string Name => action.Name;
-
-    public string Tooltip => action.Kind == ActionKind.Remote ? repo.RemoteTooltip : action.Name;
-
-    public bool IsEnabled => action.Kind != ActionKind.Remote || repo.HasWebUrl;
-
-    public string Image => action.Image ?? "";
-
-    public bool HasImage => action.Image is not null;
-
-    public string Glyph => action.Glyph ?? "";
-
-    public bool HasGlyph => !HasImage && action.Glyph is not null;
-
-    public string Badge => action.Badge ?? "";
-
-    public bool HasBadge => !HasImage && action.Glyph is null && action.Badge is not null;
 }

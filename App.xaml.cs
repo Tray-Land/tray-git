@@ -11,7 +11,7 @@ namespace TrayGit;
 /// Tray-only application: no window at launch, just a notification-area icon that toggles the
 /// flyout. Windows exist only while they're in use; the idle app is an icon and little else.
 /// </summary>
-public partial class App : Application
+public partial class App : Application, ITrayHost
 {
     public const string DisplayName = "Tray Git";
 

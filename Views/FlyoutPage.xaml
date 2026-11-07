@@ -3,8 +3,9 @@
     x:Class="TrayGit.Views.FlyoutPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:core="using:TrayGit.Core"
+    xmlns:viewModels="using:TrayGit.ViewModels"
     xmlns:views="using:TrayGit.Views"
+    x:DefaultBindMode="OneWay"
     Background="Transparent">
 
     <Grid Padding="16,12,12,16" RowSpacing="12">
@@ -16,7 +17,6 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Header  -->
         <Grid ColumnSpacing="4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -26,43 +26,47 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
-                x:Name="TitleText"
                 VerticalAlignment="Center"
                 Style="{StaticResource SubtitleTextBlockStyle}"
-                Text="Tray Git" />
+                Text="{x:Bind ViewModel.DisplayName}" />
             <ToggleButton
                 x:Name="FavoritesToggle"
                 Grid.Column="1"
+                AutomationProperties.AutomationId="favorites-toggle"
                 AutomationProperties.Name="Show only favorites"
-                Checked="FavoritesToggle_Changed"
+                IsChecked="{x:Bind ViewModel.FavoritesOnly, Mode=TwoWay}"
                 Style="{StaticResource FlyoutIconToggleButtonStyle}"
                 ToolTipService.ToolTip="Show only favorites"
-                Unchecked="FavoritesToggle_Changed">
-                <FontIcon x:Name="FavoritesToggleIcon" FontSize="14" Glyph="&#xE734;" />
+                Visibility="{x:Bind ViewModel.IsConfigured}">
+                <FontIcon FontSize="14" Glyph="{x:Bind ViewModel.FavoritesGlyph}" />
             </ToggleButton>
             <ToggleButton
                 x:Name="DirtyToggle"
                 Grid.Column="2"
+                AutomationProperties.AutomationId="dirty-toggle"
                 AutomationProperties.Name="Show only dirty repos"
-                Checked="DirtyToggle_Changed"
+                IsChecked="{x:Bind ViewModel.DirtyOnly, Mode=TwoWay}"
                 Style="{StaticResource FlyoutIconToggleButtonStyle}"
                 ToolTipService.ToolTip="Show only dirty repos"
-                Unchecked="DirtyToggle_Changed">
+                Visibility="{x:Bind ViewModel.IsConfigured}">
                 <FontIcon FontSize="14" Glyph="&#xE70F;" />
             </ToggleButton>
             <Button
                 x:Name="RefreshButton"
                 Grid.Column="3"
+                AutomationProperties.AutomationId="rescan-button"
                 AutomationProperties.Name="Rescan source folder"
-                Click="RefreshButton_Click"
+                Command="{x:Bind ViewModel.RefreshCommand}"
                 Style="{StaticResource FlyoutIconButtonStyle}"
-                ToolTipService.ToolTip="Rescan source folder">
+                ToolTipService.ToolTip="Rescan source folder"
+                Visibility="{x:Bind ViewModel.IsConfigured}">
                 <FontIcon FontSize="14" Glyph="&#xE72C;" />
             </Button>
             <Button
                 Grid.Column="4"
+                AutomationProperties.AutomationId="settings-button"
                 AutomationProperties.Name="Settings"
-                Click="SettingsButton_Click"
+                Command="{x:Bind ViewModel.ShowSettingsCommand}"
                 Style="{StaticResource FlyoutIconButtonStyle}"
                 ToolTipService.ToolTip="Settings">
                 <FontIcon FontSize="14" Glyph="&#xE713;" />
@@ -72,27 +76,31 @@
         <AutoSuggestBox
             x:Name="SearchBox"
             Grid.Row="1"
+            AutomationProperties.AutomationId="repo-search"
             AutomationProperties.Name="Filter repos"
-            PlaceholderText="Filter repos"
+            IsEnabled="{x:Bind ViewModel.IsConfigured}"
+            PlaceholderText="{x:Bind ViewModel.SearchPlaceholder}"
             PreviewKeyDown="SearchBox_PreviewKeyDown"
             QueryIcon="Find"
             QuerySubmitted="SearchBox_QuerySubmitted"
-            TextChanged="SearchBox_TextChanged" />
+            Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-        <!--  Errors keep the last good list visible underneath  -->
         <InfoBar
-            x:Name="StatusBar"
             Grid.Row="2"
             IsClosable="False"
-            IsOpen="False"
-            Severity="Warning" />
+            IsOpen="{x:Bind ViewModel.IsStatusOpen}"
+            Message="{x:Bind ViewModel.StatusMessage}"
+            Severity="Warning"
+            Title="{x:Bind ViewModel.StatusTitle}" />
 
         <ListView
             x:Name="RepoList"
             Grid.Row="3"
             Margin="-12,0,-8,0"
+            AutomationProperties.AutomationId="repo-list"
             GotFocus="RepoList_GotFocus"
             IsItemClickEnabled="False"
+            ItemsSource="{x:Bind ViewModel.Repositories}"
             LostFocus="RepoList_LostFocus"
             PreviewKeyDown="RepoList_PreviewKeyDown"
             SelectionMode="Single">
@@ -103,15 +111,14 @@
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
-                <DataTemplate x:DataType="core:GitRepo">
-                    <!--  Swipe left (touch or pen) to reveal Fetch; right-click does the same with a mouse  -->
+                <DataTemplate x:DataType="viewModels:RepoItemViewModel">
                     <SwipeControl>
                         <SwipeControl.RightItems>
                             <SwipeItems Mode="Reveal">
                                 <SwipeItem
                                     Background="{ThemeResource AccentFillColorDefaultBrush}"
+                                    Command="{x:Bind FetchCommand}"
                                     Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
-                                    Invoked="FetchSwipeItem_Invoked"
                                     Text="Fetch">
                                     <SwipeItem.IconSource>
                                         <FontIconSource Glyph="&#xE895;" />
@@ -119,243 +126,234 @@
                                 </SwipeItem>
                                 <SwipeItem
                                     Background="{ThemeResource SystemFillColorCautionBackgroundBrush}"
+                                    Command="{x:Bind ToggleFavoriteCommand}"
                                     Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                                    Invoked="FavoriteSwipeItem_Invoked"
-                                    Text="{x:Bind FavoriteActionText, Mode=OneWay}">
+                                    Text="{x:Bind Repo.FavoriteActionText}">
                                     <SwipeItem.IconSource>
                                         <FontIconSource Glyph="&#xE734;" />
                                     </SwipeItem.IconSource>
                                 </SwipeItem>
                             </SwipeItems>
                         </SwipeControl.RightItems>
-                    <Grid
-                        Padding="0,6"
-                        AutomationProperties.Name="{x:Bind Name}"
-                        Background="Transparent"
-                        ColumnSpacing="2"
-                        DoubleTapped="RepoRow_DoubleTapped"
-                        PointerEntered="RepoRow_PointerEntered"
-                        PointerExited="RepoRow_PointerExited"
-                        Tapped="RepoRow_Tapped">
-                        <Grid.ContextFlyout>
-                            <MenuFlyout>
-                                <MenuFlyoutItem
-                                    Click="FetchMenuItem_Click"
-                                    IsEnabled="{x:Bind CanFetch, Mode=OneWay}"
-                                    Tag="{x:Bind}"
-                                    Text="Fetch">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE895;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem
-                                    Click="PullMenuItem_Click"
-                                    IsEnabled="{x:Bind CanFetch, Mode=OneWay}"
-                                    Tag="{x:Bind}"
-                                    Text="Pull">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE896;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem
-                                    Click="PushMenuItem_Click"
-                                    IsEnabled="{x:Bind CanFetch, Mode=OneWay}"
-                                    Tag="{x:Bind}"
-                                    Text="Push">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE898;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem
-                                    Click="CopyPathMenuItem_Click"
-                                    Tag="{x:Bind}"
-                                    Text="Copy as path">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8C8;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem
-                                    Click="FavoriteMenuItem_Click"
-                                    Tag="{x:Bind}"
-                                    Text="{x:Bind FavoriteActionText, Mode=OneWay}">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE734;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                            </MenuFlyout>
-                        </Grid.ContextFlyout>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <StackPanel
-                            VerticalAlignment="Center"
-                            Orientation="Horizontal"
-                            Spacing="6">
-                            <TextBlock
-                                Style="{StaticResource BodyStrongTextBlockStyle}"
-                                Text="{x:Bind Name}"
-                                TextTrimming="CharacterEllipsis"
-                                TextWrapping="NoWrap"
-                                ToolTipService.ToolTip="{x:Bind Path}" />
-                            <FontIcon
-                                VerticalAlignment="Center"
-                                FontSize="11"
-                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                                Glyph="&#xE735;"
-                                ToolTipService.ToolTip="Favorite"
-                                Visibility="{x:Bind IsFavorite, Mode=OneWay}" />
-                        </StackPanel>
-                        <!--  Branch, then the status segment, then the parent folder  -->
                         <Grid
-                            Grid.Row="1">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock
-                                MaxWidth="150"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="{x:Bind BranchText}"
-                                TextTrimming="CharacterEllipsis"
-                                TextWrapping="NoWrap" />
+                            Padding="0,6"
+                            AutomationProperties.Name="{x:Bind Repo.Name}"
+                            Background="Transparent"
+                            ColumnSpacing="2"
+                            DoubleTapped="RepoRow_DoubleTapped"
+                            PointerEntered="RepoRow_PointerEntered"
+                            PointerExited="RepoRow_PointerExited"
+                            Tapped="RepoRow_Tapped">
+                            <Grid.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="repo-fetch"
+                                        Command="{x:Bind FetchCommand}"
+                                        Text="Fetch">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE895;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="repo-pull"
+                                        Command="{x:Bind PullCommand}"
+                                        Text="Pull">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE896;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="repo-push"
+                                        Command="{x:Bind PushCommand}"
+                                        Text="Push">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE898;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="repo-copy-path"
+                                        Command="{x:Bind CopyPathCommand}"
+                                        Text="Copy as path">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE8C8;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="repo-favorite"
+                                        Command="{x:Bind ToggleFavoriteCommand}"
+                                        Text="{x:Bind Repo.FavoriteActionText}">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE734;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                </MenuFlyout>
+                            </Grid.ContextFlyout>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <StackPanel
-                                Grid.Column="1"
-                                Orientation="Horizontal">
+                                VerticalAlignment="Center"
+                                Orientation="Horizontal"
+                                Spacing="6">
                                 <TextBlock
-                                    Margin="6,0,0,0"
-                                    Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="{x:Bind AddedText, Mode=OneWay}"
-                                    Visibility="{x:Bind HasAdded, Mode=OneWay}" />
-                                <TextBlock
-                                    Margin="6,0,0,0"
-                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="{x:Bind RemovedText, Mode=OneWay}"
-                                    Visibility="{x:Bind HasRemoved, Mode=OneWay}" />
-                                <TextBlock
-                                    Margin="6,0,0,0"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="{x:Bind BehindText, Mode=OneWay}"
-                                    ToolTipService.ToolTip="Commits to pull"
-                                    Visibility="{x:Bind HasBehind, Mode=OneWay}" />
-                                <TextBlock
-                                    Margin="6,0,0,0"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                    Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="{x:Bind AheadText, Mode=OneWay}"
-                                    ToolTipService.ToolTip="Commits to push"
-                                    Visibility="{x:Bind HasAhead, Mode=OneWay}" />
-                                <ProgressRing
-                                    Width="12"
-                                    Margin="6,0,0,0"
-                                    Height="12"
+                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                    Text="{x:Bind Repo.Name}"
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="NoWrap"
+                                    ToolTipService.ToolTip="{x:Bind Repo.Path}" />
+                                <FontIcon
                                     VerticalAlignment="Center"
-                                    IsActive="{x:Bind IsFetching, Mode=OneWay}"
-                                    Visibility="{x:Bind IsFetching, Mode=OneWay}" />
+                                    FontSize="11"
+                                    Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                    Glyph="&#xE735;"
+                                    ToolTipService.ToolTip="Favorite"
+                                    Visibility="{x:Bind Repo.IsFavorite}" />
                             </StackPanel>
-                            <TextBlock
-                                Grid.Column="2"
-                                Margin="6,0,0,0"
-                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="{x:Bind ParentCaption}"
-                                TextTrimming="CharacterEllipsis"
-                                TextWrapping="NoWrap" />
+                            <Grid Grid.Row="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock
+                                    MaxWidth="150"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind Repo.BranchText}"
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="NoWrap" />
+                                <StackPanel
+                                    Grid.Column="1"
+                                    Orientation="Horizontal">
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind Repo.AddedText}"
+                                        Visibility="{x:Bind Repo.HasAdded}" />
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind Repo.RemovedText}"
+                                        Visibility="{x:Bind Repo.HasRemoved}" />
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind Repo.BehindText}"
+                                        ToolTipService.ToolTip="Commits to pull"
+                                        Visibility="{x:Bind Repo.HasBehind}" />
+                                    <TextBlock
+                                        Margin="6,0,0,0"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Style="{StaticResource CaptionTextBlockStyle}"
+                                        Text="{x:Bind Repo.AheadText}"
+                                        ToolTipService.ToolTip="Commits to push"
+                                        Visibility="{x:Bind Repo.HasAhead}" />
+                                    <ProgressRing
+                                        Width="12"
+                                        Height="12"
+                                        Margin="6,0,0,0"
+                                        VerticalAlignment="Center"
+                                        IsActive="{x:Bind Repo.IsFetching}"
+                                        Visibility="{x:Bind Repo.IsFetching}" />
+                                </StackPanel>
+                                <TextBlock
+                                    Grid.Column="2"
+                                    Margin="6,0,0,0"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind Repo.ParentCaption}"
+                                    TextTrimming="CharacterEllipsis"
+                                    TextWrapping="NoWrap" />
+                            </Grid>
+                            <ItemsControl
+                                Canvas.ZIndex="1"
+                                HorizontalAlignment="Right"
+                                IsTabStop="False"
+                                ItemsSource="{x:Bind Actions}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:RepoActionViewModel">
+                                        <Button
+                                            AutomationProperties.AutomationId="{x:Bind Action.Id}"
+                                            AutomationProperties.Name="{x:Bind Name}"
+                                            Command="{x:Bind RunCommand}"
+                                            IsEnabled="{x:Bind IsEnabled}"
+                                            Opacity="{x:Bind Opacity}"
+                                            Style="{StaticResource FlyoutIconButtonStyle}"
+                                            ToolTipService.ToolTip="{x:Bind Tooltip}">
+                                            <Grid>
+                                                <Image
+                                                    Width="16"
+                                                    Height="16"
+                                                    Source="{x:Bind views:ActionIcons.For(Image)}"
+                                                    Visibility="{x:Bind HasImage}" />
+                                                <FontIcon
+                                                    FontSize="14"
+                                                    Glyph="{x:Bind Glyph}"
+                                                    Visibility="{x:Bind HasGlyph}" />
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    FontWeight="SemiBold"
+                                                    Text="{x:Bind Badge}"
+                                                    Visibility="{x:Bind HasBadge}" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Grid>
-                        <!--  The buttons are the user's choice (Settings), so they are filled in per row from code  -->
-                        <ItemsControl
-                            Canvas.ZIndex="1"
-                            DataContextChanged="ActionStrip_DataContextChanged"
-                            HorizontalAlignment="Right"
-                            IsTabStop="False">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="2" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="core:RepoActionItem">
-                                    <!--  Every row reserves button height; inactive buttons remain focusable.  -->
-                                    <Button
-                                        AutomationProperties.Name="{x:Bind Name}"
-                                        Click="ActionButton_Click"
-                                        IsEnabled="{x:Bind IsEnabled}"
-                                        Opacity="{x:Bind Opacity, Mode=OneWay}"
-                                        Style="{StaticResource FlyoutIconButtonStyle}"
-                                        ToolTipService.ToolTip="{x:Bind Tooltip}">
-                                        <Grid>
-                                            <Image
-                                                Width="16"
-                                                Height="16"
-                                                Source="{x:Bind views:ActionIcons.For(Image)}"
-                                                Visibility="{x:Bind HasImage}" />
-                                            <FontIcon
-                                                FontSize="14"
-                                                Glyph="{x:Bind Glyph}"
-                                                Visibility="{x:Bind HasGlyph}" />
-                                            <TextBlock
-                                                FontSize="11"
-                                                FontWeight="SemiBold"
-                                                Text="{x:Bind Badge}"
-                                                Visibility="{x:Bind HasBadge}" />
-                                        </Grid>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Grid>
                     </SwipeControl>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
 
-        <!--  Empty / not configured  -->
         <StackPanel
-            x:Name="EmptyPanel"
             Grid.Row="3"
             MaxWidth="280"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Spacing="12"
-            Visibility="Collapsed">
+            Visibility="{x:Bind ViewModel.IsEmpty}">
             <TextBlock
-                x:Name="EmptyText"
                 HorizontalAlignment="Center"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="{x:Bind ViewModel.EmptyText}"
                 TextAlignment="Center"
                 TextWrapping="Wrap" />
             <Button
-                x:Name="ChooseFolderButton"
                 HorizontalAlignment="Center"
-                Click="ChooseFolderButton_Click"
+                AutomationProperties.AutomationId="choose-folder-empty"
+                Command="{x:Bind ViewModel.ChooseFolderCommand}"
                 Content="Choose source folder"
-                Style="{StaticResource AccentButtonStyle}" />
+                Style="{StaticResource AccentButtonStyle}"
+                Visibility="{x:Bind ViewModel.NeedsConfiguration}" />
         </StackPanel>
 
-        <!--  Footer  -->
         <Grid Grid.Row="4" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
-                x:Name="UpdatedText"
                 VerticalAlignment="Center"
                 Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                 Style="{StaticResource CaptionTextBlockStyle}"
+                Text="{x:Bind ViewModel.UpdatedText}"
                 TextTrimming="CharacterEllipsis"
                 TextWrapping="NoWrap" />
             <ProgressRing
-                x:Name="LoadingRing"
                 Grid.Column="1"
                 Width="16"
                 Height="16"
-                IsActive="False" />
+                IsActive="{x:Bind ViewModel.IsLoading}" />
         </Grid>
     </Grid>
 </Page>

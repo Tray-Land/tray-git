@@ -3,6 +3,8 @@
     x:Class="TrayGit.Views.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:viewModels="using:TrayGit.ViewModels"
+    x:DefaultBindMode="OneWay"
     Background="Transparent">
 
     <Grid Padding="16,12,12,16" RowSpacing="12">
@@ -12,13 +14,13 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!--  Header  -->
         <StackPanel Orientation="Horizontal" Spacing="8">
             <Button
                 x:Name="BackButton"
                 Margin="-8,0,0,0"
+                AutomationProperties.AutomationId="settings-back"
                 AutomationProperties.Name="Back"
-                Click="BackButton_Click"
+                Command="{x:Bind ViewModel.BackCommand}"
                 Style="{StaticResource FlyoutIconButtonStyle}"
                 ToolTipService.ToolTip="Back">
                 <FontIcon FontSize="14" Glyph="&#xE72B;" />
@@ -31,24 +33,24 @@
 
         <ScrollViewer Grid.Row="1" Margin="0,0,-4,0">
             <StackPanel Margin="0,0,4,0" Spacing="4">
-                <!--  Source folder: label and path on top, button underneath so long paths fit  -->
                 <StackPanel
                     Padding="16,12"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
-                    CornerRadius="8"
+                    CornerRadius="{ThemeResource ControlCornerRadius}"
                     Spacing="8">
                     <StackPanel>
                         <TextBlock Text="Source folder" />
                         <TextBlock
-                            x:Name="SourceFolderText"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="{x:Bind ViewModel.SourceFolderText}"
                             TextWrapping="Wrap" />
                     </StackPanel>
                     <Button
                         x:Name="BrowseButton"
+                        AutomationProperties.AutomationId="source-folder-browse"
                         AutomationProperties.Name="Choose source folder"
                         Click="BrowseButton_Click"
                         Content="Choose folder" />
@@ -60,7 +62,7 @@
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     ColumnSpacing="12"
-                    CornerRadius="8">
+                    CornerRadius="{ThemeResource ControlCornerRadius}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
@@ -68,30 +70,29 @@
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="Start with Windows" />
                         <TextBlock
-                            x:Name="StartupDescription"
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="Keep the tray icon ready after you sign in."
+                            Text="{x:Bind ViewModel.StartupDescription}"
                             TextWrapping="Wrap" />
                     </StackPanel>
                     <ToggleSwitch
                         x:Name="StartupToggle"
                         Grid.Column="1"
                         MinWidth="0"
+                        AutomationProperties.AutomationId="startup-toggle"
                         AutomationProperties.Name="Start with Windows"
-                        IsEnabled="False"
+                        IsEnabled="{x:Bind ViewModel.StartupToggleEnabled}"
+                        IsOn="{x:Bind ViewModel.StartupEnabled, Mode=TwoWay}"
                         OffContent=""
-                        OnContent=""
-                        Toggled="StartupToggle_Toggled" />
+                        OnContent="" />
                 </Grid>
 
-                <!--  Global hotkey: toggle, then a button that records the next key combination  -->
                 <StackPanel
                     Padding="16,12"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
-                    CornerRadius="8"
+                    CornerRadius="{ThemeResource ControlCornerRadius}"
                     Spacing="8">
                     <Grid ColumnSpacing="12">
                         <Grid.ColumnDefinitions>
@@ -101,36 +102,38 @@
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="Global hotkey" />
                             <TextBlock
-                                x:Name="HotKeyDescription"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                 Style="{StaticResource CaptionTextBlockStyle}"
-                                Text="Open the list from anywhere, ready to search."
+                                Text="{x:Bind ViewModel.HotKeyDescription}"
                                 TextWrapping="Wrap" />
                         </StackPanel>
                         <ToggleSwitch
-                            x:Name="HotKeyToggle"
                             Grid.Column="1"
                             MinWidth="0"
+                            AutomationProperties.AutomationId="hotkey-toggle"
                             AutomationProperties.Name="Global hotkey"
+                            IsOn="{x:Bind ViewModel.HotKeyEnabled, Mode=TwoWay}"
                             OffContent=""
                             OnContent=""
                             Toggled="HotKeyToggle_Toggled" />
                     </Grid>
                     <Button
                         x:Name="HotKeyButton"
+                        AutomationProperties.AutomationId="hotkey-capture"
                         AutomationProperties.Name="Change hotkey"
-                        Click="HotKeyButton_Click"
+                        Command="{x:Bind ViewModel.BeginHotKeyCaptureCommand}"
+                        Content="{x:Bind ViewModel.HotKeyButtonText}"
+                        IsEnabled="{x:Bind ViewModel.HotKeyCaptureEnabled}"
                         LostFocus="HotKeyButton_LostFocus"
                         PreviewKeyDown="HotKeyButton_PreviewKeyDown" />
                 </StackPanel>
 
-                <!--  Row buttons: tick and drag the actions to show; the list is built in code  -->
                 <StackPanel
                     Padding="16,12"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
-                    CornerRadius="8"
+                    CornerRadius="{ThemeResource ControlCornerRadius}"
                     Spacing="8">
                     <StackPanel>
                         <TextBlock Text="Row buttons" />
@@ -141,12 +144,13 @@
                             TextWrapping="Wrap" />
                     </StackPanel>
                     <ListView
-                        x:Name="ActionsList"
+                        AutomationProperties.AutomationId="row-actions-list"
                         AllowDrop="True"
                         CanDragItems="True"
                         CanReorderItems="True"
                         DragItemsCompleted="ActionsList_DragItemsCompleted"
                         IsItemClickEnabled="False"
+                        ItemsSource="{x:Bind ViewModel.Actions}"
                         ScrollViewer.VerticalScrollBarVisibility="Disabled"
                         ScrollViewer.VerticalScrollMode="Disabled"
                         SelectionMode="None">
@@ -157,6 +161,40 @@
                                 <Setter Property="Padding" Value="0" />
                             </Style>
                         </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="viewModels:ActionSettingViewModel">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <FontIcon
+                                        VerticalAlignment="Center"
+                                        AutomationProperties.Name="Drag to reorder"
+                                        FontSize="16"
+                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                        Glyph="&#xE700;"
+                                        ToolTipService.ToolTip="Drag to reorder" />
+                                    <CheckBox
+                                        Grid.Column="1"
+                                        MinWidth="0"
+                                        AutomationProperties.AutomationId="{x:Bind Id}"
+                                        Content="{x:Bind Name}"
+                                        IsChecked="{x:Bind IsShown, Mode=TwoWay}" />
+                                    <Button
+                                        Grid.Column="2"
+                                        AutomationProperties.AutomationId="{x:Bind RemoveAutomationName}"
+                                        AutomationProperties.Name="{x:Bind RemoveAutomationName}"
+                                        Command="{x:Bind RemoveCommand}"
+                                        Style="{StaticResource FlyoutIconButtonStyle}"
+                                        ToolTipService.ToolTip="Remove"
+                                        Visibility="{x:Bind IsCustom}">
+                                        <FontIcon FontSize="12" Glyph="&#xE74D;" />
+                                    </Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
                     </ListView>
                     <TextBlock
                         Margin="0,4,0,0"
@@ -164,49 +202,53 @@
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Text="Add a custom action" />
                     <TextBox
-                        x:Name="CustomNameBox"
+                        AutomationProperties.AutomationId="custom-action-name"
                         AutomationProperties.Name="Custom action name"
-                        PlaceholderText="Name, such as Aider" />
+                        PlaceholderText="Name, such as Aider"
+                        Text="{x:Bind ViewModel.CustomActionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBox
-                        x:Name="CustomCommandBox"
+                        AutomationProperties.AutomationId="custom-action-command"
                         AutomationProperties.Name="Custom action command"
-                        PlaceholderText="Command, such as aider" />
+                        PlaceholderText="Command, such as aider"
+                        Text="{x:Bind ViewModel.CustomActionCommand, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     <Button
-                        x:Name="AddActionButton"
-                        Click="AddActionButton_Click"
+                        AutomationProperties.AutomationId="custom-action-add"
+                        Command="{x:Bind ViewModel.AddActionCommand}"
                         Content="Add" />
                 </StackPanel>
 
-                <!--  Interaction: what Enter, click and double-click do on a repo  -->
                 <StackPanel
                     Padding="16,12"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
-                    CornerRadius="8"
+                    CornerRadius="{ThemeResource ControlCornerRadius}"
                     Spacing="8">
                     <TextBlock Text="Interaction" />
                     <ComboBox
-                        x:Name="EnterCombo"
                         HorizontalAlignment="Stretch"
+                        AutomationProperties.AutomationId="enter-action"
                         AutomationProperties.Name="Enter does"
                         DisplayMemberPath="Name"
                         Header="Enter"
-                        SelectionChanged="Combo_SelectionChanged" />
+                        ItemsSource="{x:Bind ViewModel.ActionChoices}"
+                        SelectedItem="{x:Bind ViewModel.EnterAction, Mode=TwoWay}" />
                     <ComboBox
-                        x:Name="ClickCombo"
                         HorizontalAlignment="Stretch"
+                        AutomationProperties.AutomationId="click-action"
                         AutomationProperties.Name="Click does"
                         DisplayMemberPath="Name"
                         Header="Click"
-                        SelectionChanged="Combo_SelectionChanged" />
+                        ItemsSource="{x:Bind ViewModel.ActionChoices}"
+                        SelectedItem="{x:Bind ViewModel.ClickAction, Mode=TwoWay}" />
                     <ComboBox
-                        x:Name="DoubleClickCombo"
                         HorizontalAlignment="Stretch"
+                        AutomationProperties.AutomationId="double-click-action"
                         AutomationProperties.Name="Double-click does"
                         DisplayMemberPath="Name"
                         Header="Double-click"
-                        SelectionChanged="Combo_SelectionChanged" />
+                        ItemsSource="{x:Bind ViewModel.ActionChoices}"
+                        SelectedItem="{x:Bind ViewModel.DoubleClickAction, Mode=TwoWay}" />
                     <TextBlock
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         Style="{StaticResource CaptionTextBlockStyle}"
@@ -217,9 +259,9 @@
         </ScrollViewer>
 
         <TextBlock
-            x:Name="VersionText"
             Grid.Row="2"
             Foreground="{ThemeResource TextFillColorTertiaryBrush}"
-            Style="{StaticResource CaptionTextBlockStyle}" />
+            Style="{StaticResource CaptionTextBlockStyle}"
+            Text="{x:Bind ViewModel.VersionText}" />
     </Grid>
 </Page>
