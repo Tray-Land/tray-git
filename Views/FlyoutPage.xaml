@@ -125,8 +125,7 @@
                         DoubleTapped="RepoRow_DoubleTapped"
                         PointerEntered="RepoRow_PointerEntered"
                         PointerExited="RepoRow_PointerExited"
-                        Tapped="RepoRow_Tapped"
-                        ToolTipService.ToolTip="{x:Bind Path}">
+                        Tapped="RepoRow_Tapped">
                         <Grid.ContextFlyout>
                             <MenuFlyout>
                                 <MenuFlyoutItem
@@ -174,91 +173,94 @@
                                 </MenuFlyoutItem>
                             </MenuFlyout>
                         </Grid.ContextFlyout>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Spacing="6">
+                            <TextBlock
+                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Text="{x:Bind Name}"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap"
+                                ToolTipService.ToolTip="{x:Bind Path}" />
+                            <FontIcon
+                                VerticalAlignment="Center"
+                                FontSize="11"
+                                Foreground="{ThemeResource SystemFillColorCautionBrush}"
+                                Glyph="&#xE735;"
+                                ToolTipService.ToolTip="Favorite"
+                                Visibility="{x:Bind IsFavorite, Mode=OneWay}" />
+                        </StackPanel>
+                        <!--  Branch, then the status segment, then the parent folder  -->
+                        <Grid
+                            Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                MaxWidth="150"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="{x:Bind BranchText}"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap" />
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal">
                                 <TextBlock
-                                    MaxWidth="240"
-                                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                                    Text="{x:Bind Name}"
-                                    TextTrimming="CharacterEllipsis"
-                                    TextWrapping="NoWrap" />
-                                <FontIcon
-                                    VerticalAlignment="Center"
-                                    FontSize="11"
-                                    Foreground="{ThemeResource SystemFillColorCautionBrush}"
-                                    Glyph="&#xE735;"
-                                    ToolTipService.ToolTip="Favorite"
-                                    Visibility="{x:Bind IsFavorite, Mode=OneWay}" />
-                            </StackPanel>
-                            <!--  Branch, then the status segment, then the parent folder  -->
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    MaxWidth="150"
-                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Margin="6,0,0,0"
+                                    Foreground="{ThemeResource SystemFillColorSuccessBrush}"
                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="{x:Bind BranchText}"
-                                    TextTrimming="CharacterEllipsis"
-                                    TextWrapping="NoWrap" />
-                                <StackPanel
-                                    Grid.Column="1"
-                                    Orientation="Horizontal">
-                                    <TextBlock
-                                        Margin="6,0,0,0"
-                                        Foreground="{ThemeResource SystemFillColorSuccessBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                        Text="{x:Bind AddedText, Mode=OneWay}"
-                                        Visibility="{x:Bind HasAdded, Mode=OneWay}" />
-                                    <TextBlock
-                                        Margin="6,0,0,0"
-                                        Foreground="{ThemeResource SystemFillColorCriticalBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                        Text="{x:Bind RemovedText, Mode=OneWay}"
-                                        Visibility="{x:Bind HasRemoved, Mode=OneWay}" />
-                                    <TextBlock
-                                        Margin="6,0,0,0"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                        Text="{x:Bind BehindText, Mode=OneWay}"
-                                        ToolTipService.ToolTip="Commits to pull"
-                                        Visibility="{x:Bind HasBehind, Mode=OneWay}" />
-                                    <TextBlock
-                                        Margin="6,0,0,0"
-                                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                        Style="{StaticResource CaptionTextBlockStyle}"
-                                        Text="{x:Bind AheadText, Mode=OneWay}"
-                                        ToolTipService.ToolTip="Commits to push"
-                                        Visibility="{x:Bind HasAhead, Mode=OneWay}" />
-                                    <ProgressRing
-                                        Width="12"
-                                        Margin="6,0,0,0"
-                                        Height="12"
-                                        VerticalAlignment="Center"
-                                        IsActive="{x:Bind IsFetching, Mode=OneWay}"
-                                        Visibility="{x:Bind IsFetching, Mode=OneWay}" />
-                                </StackPanel>
+                                    Text="{x:Bind AddedText, Mode=OneWay}"
+                                    Visibility="{x:Bind HasAdded, Mode=OneWay}" />
                                 <TextBlock
-                                    Grid.Column="2"
+                                    Margin="6,0,0,0"
+                                    Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind RemovedText, Mode=OneWay}"
+                                    Visibility="{x:Bind HasRemoved, Mode=OneWay}" />
+                                <TextBlock
                                     Margin="6,0,0,0"
                                     Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                     Style="{StaticResource CaptionTextBlockStyle}"
-                                    Text="{x:Bind ParentCaption}"
-                                    TextTrimming="CharacterEllipsis"
-                                    TextWrapping="NoWrap" />
-                            </Grid>
-                        </StackPanel>
+                                    Text="{x:Bind BehindText, Mode=OneWay}"
+                                    ToolTipService.ToolTip="Commits to pull"
+                                    Visibility="{x:Bind HasBehind, Mode=OneWay}" />
+                                <TextBlock
+                                    Margin="6,0,0,0"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Style="{StaticResource CaptionTextBlockStyle}"
+                                    Text="{x:Bind AheadText, Mode=OneWay}"
+                                    ToolTipService.ToolTip="Commits to push"
+                                    Visibility="{x:Bind HasAhead, Mode=OneWay}" />
+                                <ProgressRing
+                                    Width="12"
+                                    Margin="6,0,0,0"
+                                    Height="12"
+                                    VerticalAlignment="Center"
+                                    IsActive="{x:Bind IsFetching, Mode=OneWay}"
+                                    Visibility="{x:Bind IsFetching, Mode=OneWay}" />
+                            </StackPanel>
+                            <TextBlock
+                                Grid.Column="2"
+                                Margin="6,0,0,0"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="{x:Bind ParentCaption}"
+                                TextTrimming="CharacterEllipsis"
+                                TextWrapping="NoWrap" />
+                        </Grid>
                         <!--  The buttons are the user's choice (Settings), so they are filled in per row from code  -->
                         <ItemsControl
-                            Grid.Column="1"
+                            Canvas.ZIndex="1"
                             DataContextChanged="ActionStrip_DataContextChanged"
+                            HorizontalAlignment="Right"
                             IsTabStop="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -267,7 +269,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="core:RepoActionItem">
-                                    <!--  Faded out (not collapsed) unless the row is first, hovered or focused, so focus can still reach it  -->
+                                    <!--  Every row reserves button height; inactive buttons remain focusable.  -->
                                     <Button
                                         AutomationProperties.Name="{x:Bind Name}"
                                         Click="ActionButton_Click"

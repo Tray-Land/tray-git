@@ -112,7 +112,7 @@ public sealed class RepoActionItem(ActionDef action, GitRepo repo, bool expanded
 
     /// <summary>
     /// True shows the button; false fades it out. It stays in the layout and the focus order either
-    /// way, so arrow-key focus can move onto it (which then expands the row).
+    /// way, so row height stays stable and arrow-key focus can still reach it.
     /// </summary>
     public bool IsExpanded
     {
