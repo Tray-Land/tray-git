@@ -124,7 +124,7 @@
                         PreviewKeyDown="HotKeyButton_PreviewKeyDown" />
                 </StackPanel>
 
-                <!--  Row buttons: tick the actions to show; the list is built in code  -->
+                <!--  Row buttons: tick and drag the actions to show; the list is built in code  -->
                 <StackPanel
                     Padding="16,12"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -137,10 +137,27 @@
                         <TextBlock
                             Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                             Style="{StaticResource CaptionTextBlockStyle}"
-                            Text="Choose the buttons shown on each repo. The AI tools open a terminal in the repo and start the tool."
+                            Text="Choose the buttons shown on each repo and drag the handles to reorder them. The AI tools open a terminal in the repo and start the tool."
                             TextWrapping="Wrap" />
                     </StackPanel>
-                    <StackPanel x:Name="ActionsPanel" />
+                    <ListView
+                        x:Name="ActionsList"
+                        AllowDrop="True"
+                        CanDragItems="True"
+                        CanReorderItems="True"
+                        DragItemsCompleted="ActionsList_DragItemsCompleted"
+                        IsItemClickEnabled="False"
+                        ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                        ScrollViewer.VerticalScrollMode="Disabled"
+                        SelectionMode="None">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="MinHeight" Value="0" />
+                                <Setter Property="Padding" Value="0" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
                     <TextBlock
                         Margin="0,4,0,0"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"

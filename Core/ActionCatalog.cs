@@ -64,11 +64,22 @@ public static class ActionCatalog
         return all;
     }
 
-    /// <summary>The actions to show as row buttons, in catalog order; unknown ids are ignored.</summary>
+    /// <summary>The actions to show as row buttons, in saved order; unknown and duplicate ids are ignored.</summary>
     public static List<ActionDef> Toolbar(IEnumerable<string> ids, IEnumerable<ActionDef> custom)
     {
-        HashSet<string> wanted = [.. ids];
-        return All(custom).Where(a => wanted.Contains(a.Id)).ToList();
+        Dictionary<string, ActionDef> available = All(custom).ToDictionary(a => a.Id, StringComparer.Ordinal);
+        return SelectInOrder(ids, available);
+    }
+
+    /// <summary>All available actions in saved order, with any newly added actions appended.</summary>
+    public static List<ActionDef> Order(IEnumerable<string> ids, IEnumerable<ActionDef> available)
+    {
+        List<ActionDef> all = [.. available];
+        Dictionary<string, ActionDef> byId = all.ToDictionary(a => a.Id, StringComparer.Ordinal);
+        List<ActionDef> ordered = SelectInOrder(ids, byId);
+        HashSet<string> included = ordered.Select(a => a.Id).ToHashSet(StringComparer.Ordinal);
+        ordered.AddRange(all.Where(a => included.Add(a.Id)));
+        return ordered;
     }
 
     /// <summary>The action for <paramref name="id"/>, else the one for <paramref name="fallbackId"/>, else <see cref="None"/>.</summary>
@@ -89,6 +100,23 @@ public static class ActionCatalog
         && action.Kind == ActionKind.Command
         && !string.IsNullOrWhiteSpace(action.Name)
         && !string.IsNullOrWhiteSpace(action.Command);
+
+    private static List<ActionDef> SelectInOrder(
+        IEnumerable<string> ids,
+        IReadOnlyDictionary<string, ActionDef> available)
+    {
+        List<ActionDef> ordered = [];
+        HashSet<string> added = new(StringComparer.Ordinal);
+        foreach (string id in ids)
+        {
+            if (added.Add(id) && available.TryGetValue(id, out ActionDef? action))
+            {
+                ordered.Add(action);
+            }
+        }
+
+        return ordered;
+    }
 
     /// <summary>Two letters for a button with no icon: word initials ("My Tool" → "MT"), else the first two letters.</summary>
     public static string BadgeFor(string name)

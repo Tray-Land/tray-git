@@ -25,11 +25,23 @@ public sealed class ActionCatalogTests
     }
 
     [TestMethod]
-    public void Toolbar_follows_catalog_order_and_ignores_unknown_ids()
+    public void Toolbar_follows_saved_order_and_ignores_unknown_or_duplicate_ids()
     {
         ActionDef mine = ActionCatalog.NewCustom("Aider", "aider");
-        List<ActionDef> toolbar = ActionCatalog.Toolbar([mine.Id, "claude", "nope", "terminal"], [mine]);
-        CollectionAssert.AreEqual(new[] { "terminal", "claude", mine.Id }, toolbar.Select(a => a.Id).ToArray());
+        List<ActionDef> toolbar = ActionCatalog.Toolbar([mine.Id, "claude", "nope", "terminal", "claude"], [mine]);
+        CollectionAssert.AreEqual(new[] { mine.Id, "claude", "terminal" }, toolbar.Select(a => a.Id).ToArray());
+    }
+
+    [TestMethod]
+    public void Order_preserves_saved_order_and_appends_new_actions()
+    {
+        ActionDef mine = ActionCatalog.NewCustom("Aider", "aider");
+        List<ActionDef> all = ActionCatalog.All([mine]);
+        List<ActionDef> ordered = ActionCatalog.Order(["claude", "missing", "terminal", "claude"], all);
+
+        CollectionAssert.AreEqual(
+            new[] { "claude", "terminal", "folder", "remote", "copilot", "codex", "gemini", mine.Id },
+            ordered.Select(a => a.Id).ToArray());
     }
 
     [TestMethod]

@@ -82,6 +82,13 @@ internal static class SettingsService
         set => SetJson(nameof(ToolbarActionIds), value.ToArray(), AppJsonContext.Default.StringArray);
     }
 
+    /// <summary>Display order for all row actions, including those not currently enabled.</summary>
+    public static List<string> ActionOrderIds
+    {
+        get => GetJson(nameof(ActionOrderIds), AppJsonContext.Default.StringArray) is { } ids ? [.. ids] : [];
+        set => SetJson(nameof(ActionOrderIds), value.ToArray(), AppJsonContext.Default.StringArray);
+    }
+
     /// <summary>What Enter does on the top match in the filter box, or the selected row.</summary>
     public static string EnterActionId
     {

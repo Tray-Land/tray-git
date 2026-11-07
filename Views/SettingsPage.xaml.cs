@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using TrayGit.Core;
 using TrayGit.Services;
 using Windows.ApplicationModel;
@@ -40,39 +41,49 @@ public sealed partial class SettingsPage : Page
     {
         _loading = true;
         List<ActionDef> custom = SettingsService.CustomActions;
-        List<ActionDef> all = ActionCatalog.All(custom);
+        List<ActionDef> all = ActionCatalog.Order(SettingsService.ActionOrderIds, ActionCatalog.All(custom));
         HashSet<string> shown = [.. SettingsService.ToolbarActionIds];
 
-        ActionsPanel.Children.Clear();
+        ActionsList.Items.Clear();
         foreach (ActionDef action in all)
         {
             CheckBox box = new() { Content = action.Name, Tag = action.Id, IsChecked = shown.Contains(action.Id), MinWidth = 0 };
             box.Checked += ActionBox_Changed;
             box.Unchecked += ActionBox_Changed;
 
-            if (!ActionCatalog.IsValidCustom(action))
-            {
-                ActionsPanel.Children.Add(box);
-                continue;
-            }
-
-            Button remove = new()
-            {
-                Content = new FontIcon { Glyph = "", FontSize = 12 },
-                Tag = action.Id,
-                Style = (Style)Application.Current.Resources["FlyoutIconButtonStyle"],
-            };
-            Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(remove, $"Remove {action.Name}");
-            ToolTipService.SetToolTip(remove, "Remove");
-            remove.Click += RemoveActionButton_Click;
-
-            Grid row = new() { ColumnSpacing = 8 };
+            Grid row = new() { ColumnSpacing = 8, Tag = action.Id };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition());
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            FontIcon handle = new()
+            {
+                Glyph = "",
+                FontSize = 16,
+                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            ToolTipService.SetToolTip(handle, "Drag to reorder");
+            row.Children.Add(handle);
+            Grid.SetColumn(box, 1);
             row.Children.Add(box);
-            Grid.SetColumn(remove, 1);
-            row.Children.Add(remove);
-            ActionsPanel.Children.Add(row);
+
+            if (ActionCatalog.IsValidCustom(action))
+            {
+                Button remove = new()
+                {
+                    Content = new FontIcon { Glyph = "", FontSize = 12 },
+                    Tag = action.Id,
+                    Style = (Style)Application.Current.Resources["FlyoutIconButtonStyle"],
+                };
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(remove, $"Remove {action.Name}");
+                ToolTipService.SetToolTip(remove, "Remove");
+                remove.Click += RemoveActionButton_Click;
+                Grid.SetColumn(remove, 2);
+                row.Children.Add(remove);
+            }
+
+            ActionsList.Items.Add(row);
         }
 
         List<ActionDef> choices = [ActionCatalog.None, .. all];
@@ -96,18 +107,34 @@ public sealed partial class SettingsPage : Page
             return;
         }
 
-        // Keep the catalog order so the buttons don't depend on the order they were ticked.
-        HashSet<string> ticked = [];
-        foreach (UIElement child in ActionsPanel.Children)
+        SaveActionOrder();
+    }
+
+    private void ActionsList_DragItemsCompleted(ListViewBase sender, DragItemsCompletedEventArgs args) =>
+        SaveActionOrder();
+
+    private void SaveActionOrder()
+    {
+        List<string> ids = [];
+        List<string> shown = [];
+        foreach (object item in ActionsList.Items)
         {
-            CheckBox? box = child as CheckBox ?? (child as Grid)?.Children.OfType<CheckBox>().FirstOrDefault();
-            if (box is { IsChecked: true, Tag: string id })
+            Grid row = (Grid)item;
+            if (row.Tag is not string id)
             {
-                ticked.Add(id);
+                continue;
+            }
+
+            ids.Add(id);
+            CheckBox? box = row.Children.OfType<CheckBox>().FirstOrDefault();
+            if (box is { IsChecked: true })
+            {
+                shown.Add(id);
             }
         }
 
-        SettingsService.ToolbarActionIds = ActionCatalog.All(SettingsService.CustomActions).Select(a => a.Id).Where(ticked.Contains).ToList();
+        SettingsService.ActionOrderIds = ids;
+        SettingsService.ToolbarActionIds = shown;
     }
 
     private void AddActionButton_Click(object sender, RoutedEventArgs e)
@@ -125,6 +152,9 @@ public sealed partial class SettingsPage : Page
         List<string> shown = SettingsService.ToolbarActionIds;
         shown.Add(action.Id);
         SettingsService.ToolbarActionIds = shown;
+        SettingsService.ActionOrderIds = ActionCatalog.Order(
+            SettingsService.ActionOrderIds,
+            ActionCatalog.All(custom)).Select(a => a.Id).ToList();
 
         CustomNameBox.Text = "";
         CustomCommandBox.Text = "";
@@ -140,6 +170,7 @@ public sealed partial class SettingsPage : Page
 
         SettingsService.CustomActions = SettingsService.CustomActions.Where(a => a.Id != id).ToList();
         SettingsService.ToolbarActionIds = SettingsService.ToolbarActionIds.Where(i => i != id).ToList();
+        SettingsService.ActionOrderIds = SettingsService.ActionOrderIds.Where(i => i != id).ToList();
         ShowActions();
     }
 
