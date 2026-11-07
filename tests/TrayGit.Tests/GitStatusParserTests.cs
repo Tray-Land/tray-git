@@ -92,4 +92,56 @@ public sealed class GitStatusParserTests
         repo.SetStatus(new RepoStatus(0, 0, 0, 0));
         Assert.IsFalse(repo.HasAdded || repo.HasRemoved || repo.HasBehind || repo.HasAhead);
     }
+
+    [TestMethod]
+    public void ParsesWorkingChangesAndLineCounts()
+    {
+        const string status = "M  tracked.cs\0 M unstaged.md\0MM both.txt\0?? new file.txt\0";
+        const string numstat = "12\t3\ttracked.cs\04\t2\tunstaged.md\00\t0\tboth.txt\0-\t-\timage.png\0";
+
+        List<GitFileChange> changes = [.. GitDetailsParser.ParseChanges(status, numstat)];
+
+        Assert.AreEqual(4, changes.Count);
+        Assert.AreEqual("Modified", changes[0].Status);
+        Assert.IsTrue(changes[0].IsStaged);
+        Assert.IsFalse(changes[0].IsUnstaged);
+        Assert.AreEqual(12, changes[0].Added);
+        Assert.AreEqual(3, changes[0].Removed);
+        Assert.AreEqual("Unstaged", changes[1].StateText);
+        Assert.AreEqual("Staged and unstaged", changes[2].StateText);
+        Assert.AreEqual("Untracked", changes[3].Status);
+        Assert.AreEqual("new file.txt", changes[3].FileName);
+        Assert.AreEqual("", changes[3].LineChangeText);
+        Assert.AreEqual("Binary", new GitFileChange("image.png", "Modified", false, true, null, null).LineChangeText);
+    }
+
+    [TestMethod]
+    public void ParsesCommitHistory()
+    {
+        const string output = "abcdef0123456789\u001fabcdef0\u001fAda Lovelace\u001f2026-01-02T10:11:12+00:00\u001fAdd notes\u001e";
+
+        GitCommit commit = GitDetailsParser.ParseCommits(output).Single();
+
+        Assert.AreEqual("abcdef0", commit.ShortHash);
+        Assert.AreEqual("Ada Lovelace", commit.Author);
+        Assert.AreEqual("Add notes", commit.Subject);
+        Assert.AreEqual(DateTimeOffset.Parse("2026-01-02T10:11:12+00:00"), commit.AuthoredAt);
+    }
+
+    [TestMethod]
+    public void ParsesLocalAndRemoteBranches()
+    {
+        const string output =
+            "refs/heads/main\u001fmain\u001fabcdef0\u001f*\u001forigin/main\u001f\n"
+            + "refs/remotes/origin/main\u001forigin/main\u001fabcdef0\u001f\u001f\u001f\n"
+            + "refs/remotes/origin/HEAD\u001forigin/HEAD\u001fabcdef0\u001f\u001f\u001forigin/main\n";
+
+        List<GitBranch> branches = [.. GitDetailsParser.ParseBranches(output)];
+
+        Assert.AreEqual(2, branches.Count);
+        Assert.IsTrue(branches[0].IsCurrent);
+        Assert.AreEqual("origin/main", branches[0].Upstream);
+        Assert.IsTrue(branches[1].IsRemote);
+        Assert.AreEqual("Remote", branches[1].KindText);
+    }
 }
