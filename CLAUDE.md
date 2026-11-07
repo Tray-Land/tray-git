@@ -5,6 +5,7 @@
 This is a tray-only WinUI 3 app built from the `winui-tray-app` skill scaffold on top of `winapp new`. Load that skill before changing app lifetime, the flyout, the tray icon, polling, settings, or secrets.
 
 - Launch with `winapp run` (or `dotnet run`); never register the package by hand. Use `winapp run --clean` to test first-run behavior.
+- Always ask the user for permission before running any UI automation testing, including `winapp ui`, Playwright, scripted clicks or keyboard input, and automated screenshots.
 - `App.xaml.cs` owns the tray icon, single instance, and the only exit path (the Exit menu). There is no main window.
 - The flyout (`Views/TrayFlyoutWindow`) is hidden on dismiss and closed after a minute hidden. Anything it starts, it must stop in `FlyoutPage.OnHidden` / `Dispose`.
 - The app makes no network calls of its own. The repo scan (local disk) runs only while the flyout is visible, when the cached scan in LocalFolder is over five minutes old, the source folder changes, or the user presses Rescan. The scan reads `.git` files directly and never spawns git.exe.
