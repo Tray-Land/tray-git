@@ -9,19 +9,22 @@ public static class RepoListPolicy
     /// <summary>
     /// Recently used repos first (newest first), then the rest by name. With a query, keeps repos
     /// whose name or relative path contains every word, ranking name-prefix matches first. When
-    /// <paramref name="onlyPaths"/> is given, only repos at those paths are kept.
+    /// <paramref name="onlyPaths"/> is given, only repos at those paths are kept. When
+    /// <paramref name="onlyDirty"/> is true, only repos with local working-copy changes are kept.
     /// </summary>
     public static List<GitRepo> Arrange(
         IEnumerable<GitRepo> repos,
         IReadOnlyDictionary<string, long> lastUsed,
         string? query,
-        IReadOnlySet<string>? onlyPaths = null)
+        IReadOnlySet<string>? onlyPaths = null,
+        bool onlyDirty = false)
     {
         string[] words = (query ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         string first = words.Length > 0 ? words[0] : "";
 
         return repos
             .Where(r => onlyPaths is null || onlyPaths.Contains(r.Path))
+            .Where(r => !onlyDirty || r.IsDirty)
             .Where(r => words.All(w => Matches(r, w)))
             .OrderByDescending(r => first.Length > 0 && r.Name.StartsWith(first, StringComparison.OrdinalIgnoreCase))
             .ThenByDescending(r => lastUsed.TryGetValue(r.Path, out long ticks) ? ticks : 0)

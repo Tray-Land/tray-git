@@ -66,6 +66,9 @@ public sealed partial class GitRepo : INotifyPropertyChanged
     public bool IsFavorite { get; private set; }
 
     [JsonIgnore]
+    public bool IsDirty => Status?.IsDirty == true;
+
+    [JsonIgnore]
     public string FavoriteActionText => IsFavorite ? "Unfavorite" : "Favorite";
 
     [JsonIgnore]

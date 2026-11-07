@@ -23,6 +23,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
                 x:Name="TitleText"
@@ -39,9 +40,19 @@
                 Unchecked="FavoritesToggle_Changed">
                 <FontIcon x:Name="FavoritesToggleIcon" FontSize="14" Glyph="&#xE734;" />
             </ToggleButton>
+            <ToggleButton
+                x:Name="DirtyToggle"
+                Grid.Column="2"
+                AutomationProperties.Name="Show only dirty repos"
+                Checked="DirtyToggle_Changed"
+                Style="{StaticResource FlyoutIconToggleButtonStyle}"
+                ToolTipService.ToolTip="Show only dirty repos"
+                Unchecked="DirtyToggle_Changed">
+                <FontIcon FontSize="14" Glyph="&#xE70F;" />
+            </ToggleButton>
             <Button
                 x:Name="RefreshButton"
-                Grid.Column="2"
+                Grid.Column="3"
                 AutomationProperties.Name="Rescan source folder"
                 Click="RefreshButton_Click"
                 Style="{StaticResource FlyoutIconButtonStyle}"
@@ -49,7 +60,7 @@
                 <FontIcon FontSize="14" Glyph="&#xE72C;" />
             </Button>
             <Button
-                Grid.Column="3"
+                Grid.Column="4"
                 AutomationProperties.Name="Settings"
                 Click="SettingsButton_Click"
                 Style="{StaticResource FlyoutIconButtonStyle}"

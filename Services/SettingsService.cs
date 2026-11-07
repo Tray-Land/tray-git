@@ -68,6 +68,13 @@ internal static class SettingsService
         set => Set(nameof(ShowFavoritesOnly), value);
     }
 
+    /// <summary>Whether the list is narrowed to repos with local working-copy changes.</summary>
+    public static bool ShowDirtyOnly
+    {
+        get => Get(nameof(ShowDirtyOnly), false);
+        set => Set(nameof(ShowDirtyOnly), value);
+    }
+
     /// <summary>Actions the user defined, each a command run in a new terminal.</summary>
     public static List<ActionDef> CustomActions
     {

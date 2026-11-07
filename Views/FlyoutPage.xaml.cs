@@ -65,6 +65,7 @@ public sealed partial class FlyoutPage : Page, IDisposable
         LoadActions();
         _favorites = SettingsService.Favorites;
         FavoritesToggle.IsChecked = SettingsService.ShowFavoritesOnly;
+        DirtyToggle.IsChecked = SettingsService.ShowDirtyOnly;
         UpdateFavoritesToggleIcon();
         LoadAndMaybeScan(force: false);
 
@@ -280,6 +281,11 @@ public sealed partial class FlyoutPage : Page, IDisposable
                 repo.SetStatus(status);
             }
         }
+
+        if (DirtyToggle.IsChecked == true)
+        {
+            ShowList();
+        }
     }
 
     private Task FetchAsync(GitRepo repo) => RunGitAsync(repo, "fetch", GitService.FetchAsync);
@@ -367,6 +373,12 @@ public sealed partial class FlyoutPage : Page, IDisposable
         ShowList();
     }
 
+    private void DirtyToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        SettingsService.ShowDirtyOnly = DirtyToggle.IsChecked == true;
+        ShowList();
+    }
+
     // Outline star when off, filled when the list is narrowed to favorites.
     private void UpdateFavoritesToggleIcon() =>
         FavoritesToggleIcon.Glyph = FavoritesToggle.IsChecked == true ? "\uE735" : "\uE734";
@@ -407,7 +419,13 @@ public sealed partial class FlyoutPage : Page, IDisposable
     {
         string? root = SettingsService.SourceFolder;
         bool favoritesOnly = FavoritesToggle.IsChecked == true;
-        List<GitRepo> visible = RepoListPolicy.Arrange(_repos, SettingsService.LastUsed, SearchBox.Text, favoritesOnly ? _favorites : null);
+        bool dirtyOnly = DirtyToggle.IsChecked == true;
+        List<GitRepo> visible = RepoListPolicy.Arrange(
+            _repos,
+            SettingsService.LastUsed,
+            SearchBox.Text,
+            favoritesOnly ? _favorites : null,
+            dirtyOnly);
         _rowItems.Clear();
         RepoList.ItemsSource = visible;
 
@@ -416,20 +434,27 @@ public sealed partial class FlyoutPage : Page, IDisposable
         SearchBox.IsEnabled = configured;
         RefreshButton.Visibility = configured ? Visibility.Visible : Visibility.Collapsed;
         FavoritesToggle.Visibility = configured ? Visibility.Visible : Visibility.Collapsed;
+        DirtyToggle.Visibility = configured ? Visibility.Visible : Visibility.Collapsed;
         ChooseFolderButton.Visibility = configured ? Visibility.Collapsed : Visibility.Visible;
 
         string? empty = !configured ? "Choose the folder that holds your git repos, such as D:\\source."
             : !scanned ? null // first scan in progress; the ring says so
             : _repos.Count == 0 ? $"No git repos found in {root}."
-            : visible.Count == 0 && favoritesOnly && SearchBox.Text.Length == 0 ? "No favorites yet. Right-click a repo, or swipe it left, and choose Favorite."
-            : visible.Count == 0 ? "No repos match the filter."
+            : visible.Count == 0 && SearchBox.Text.Length > 0 ? "No repos match the filters."
+            : visible.Count == 0 && favoritesOnly && dirtyOnly ? "No favorite repos are dirty."
+            : visible.Count == 0 && favoritesOnly ? "No favorites yet. Right-click a repo, or swipe it left, and choose Favorite."
+            : visible.Count == 0 && dirtyOnly ? "No dirty repos found."
+            : visible.Count == 0 ? "No repos match the filters."
             : null;
         EmptyText.Text = empty ?? "";
         EmptyPanel.Visibility = empty is null ? Visibility.Collapsed : Visibility.Visible;
 
         string count = _repos.Count == 1 ? "1 repo" : $"{_repos.Count} repos";
-        int favoriteCount = _repos.Count(r => r.IsFavorite);
-        string shown = favoritesOnly ? (favoriteCount == 1 ? "1 favorite" : $"{favoriteCount} favorites") : count;
+        int visibleCount = visible.Count;
+        string shown = favoritesOnly && dirtyOnly ? (visibleCount == 1 ? "1 dirty favorite" : $"{visibleCount} dirty favorites")
+            : favoritesOnly ? (visibleCount == 1 ? "1 favorite" : $"{visibleCount} favorites")
+            : dirtyOnly ? (visibleCount == 1 ? "1 dirty repo" : $"{visibleCount} dirty repos")
+            : count;
         UpdatedText.Text = !configured ? "" : scanned ? $"{shown} in {root}" : $"Scanning {root}";
         App.Current.SetTrayStatus(configured && scanned ? count : null);
     }

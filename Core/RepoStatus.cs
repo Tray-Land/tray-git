@@ -7,9 +7,12 @@ namespace TrayGit.Core;
 /// <param name="Removed">Lines removed in the working tree and index, relative to HEAD.</param>
 /// <param name="Behind">Commits on the upstream branch that aren't local yet (to pull).</param>
 /// <param name="Ahead">Local commits the upstream branch doesn't have (to push).</param>
-public sealed record RepoStatus(int Added, int Removed, int Behind, int Ahead)
+/// <param name="HasLocalChanges">Whether the working copy has changed, untracked, or unmerged files.</param>
+public sealed record RepoStatus(int Added, int Removed, int Behind, int Ahead, bool HasLocalChanges = false)
 {
-    public bool IsClean => Added == 0 && Removed == 0 && Behind == 0 && Ahead == 0;
+    public bool IsClean => !HasLocalChanges && Added == 0 && Removed == 0 && Behind == 0 && Ahead == 0;
+
+    public bool IsDirty => HasLocalChanges || Added != 0 || Removed != 0;
 }
 
 /// <summary>Parses the output of the git commands the app runs for the status segment.</summary>
@@ -19,7 +22,7 @@ public static class GitStatusParser
     public static readonly string[] DiffArguments = ["--no-optional-locks", "diff", "HEAD", "--numstat", "--no-renames"];
 
     /// <summary>Arguments (after <c>git</c>) that report the branch's upstream distance.</summary>
-    public static readonly string[] StatusArguments = ["--no-optional-locks", "status", "--porcelain=v2", "--branch", "--untracked-files=no"];
+    public static readonly string[] StatusArguments = ["--no-optional-locks", "status", "--porcelain=v2", "--branch", "--untracked-files=normal"];
 
     /// <summary>
     /// Sums <c>git diff --numstat</c> ("12\t3\tpath"). Binary files are reported as "-\t-" and have no
@@ -75,8 +78,14 @@ public static class GitStatusParser
     {
         (int added, int removed) = ParseNumstat(numstatOutput);
         (int ahead, int behind) = ParseBranchAheadBehind(statusOutput);
-        return new RepoStatus(added, removed, behind, ahead);
+        return new RepoStatus(added, removed, behind, ahead, HasLocalChanges(statusOutput));
     }
+
+    /// <summary>Whether porcelain v2 status output contains a changed, untracked, or unmerged entry.</summary>
+    public static bool HasLocalChanges(string output) =>
+        output.Split('\n')
+            .Select(line => line.Trim())
+            .Any(line => line.Length > 0 && !line.StartsWith('#'));
 
     private static int Clamp(long value) => (int)Math.Min(value, int.MaxValue);
 }

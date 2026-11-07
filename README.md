@@ -18,6 +18,7 @@ Tray Git is a WinUI 3 app that lives in the Windows notification area. It has no
 - **Branch at a glance:** each row shows the checked-out branch (or short commit when detached), then its status, then the parent folder. Status is lines added in green and removed in red (working tree and index versus `HEAD`), `↓n` commits to pull and `↑n` commits to push.
 - **Fetch:** right-click a row, or swipe it left on a touch screen or pen, and choose **Fetch** to run `git fetch` and refresh that row's status. A spinner shows while it runs, and errors appear in the flyout.
 - **Favorites:** right-click a row, or swipe it left, and choose **Favorite** (or **Unfavorite**). Favorites get a star next to the name. The star button in the header narrows the list to favorites only; it stays on until you turn it off, and the filter box still applies within it.
+- **Dirty only:** the edit button between Favorites and Rescan narrows the list to repos with local working-copy changes, including staged, modified, binary, and untracked files. It can be combined with Favorites and the filter box; repos that are only ahead or behind are not considered dirty.
 - **Worktrees:** `git worktree` checkouts are listed as their own entries, with the remote read from the main repo.
 - **Light dismiss:** the flyout hides when it loses focus or when you press Escape, and clicking the tray icon toggles it.
 - **Tray menu:** right-click the icon for Open, Settings and Exit.
@@ -44,7 +45,7 @@ On first run the flyout opens with **Choose source folder**. Pick your folder an
 - Tray Git makes **no network calls of its own**. The only things that leave your machine are the browser you open with the Remote button and the `git fetch` you start with Fetch, which uses your normal git remotes and credentials.
 - The list and scan read only each repo's `.git/HEAD` and `.git/config`. While the flyout is open, the status segment runs read-only `git diff HEAD --numstat` and `git status` in each repo (no locks taken, no files changed), at most every 30 seconds per repo.
 - The scan runs only while the flyout is open: when it opens and the last scan is over five minutes old, when you change the source folder, or when you press Rescan. Results are cached in the app's local folder (`repos.json`) so the list appears instantly.
-- Settings (the source folder, recent-use times, favorites and the favorites-only toggle) are stored in the app's local settings. Nothing is stored outside the app's package data.
+- Settings (the source folder, recent-use times, favorites and list-filter toggles) are stored in the app's local settings. Nothing is stored outside the app's package data.
 - When hidden for a minute, the flyout closes and returns its memory to Windows.
 
 ## Build from source

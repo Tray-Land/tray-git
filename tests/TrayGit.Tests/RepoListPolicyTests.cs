@@ -66,6 +66,23 @@ public sealed class RepoListPolicyTests
         Assert.AreEqual(0, RepoListPolicy.Arrange(Repos, new Dictionary<string, long>(), null, new HashSet<string>()).Count);
     }
 
+    [TestMethod]
+    public void OnlyDirtyKeepsReposWithLocalChanges()
+    {
+        GitRepo clean = Repo("clean");
+        GitRepo changed = Repo("changed");
+        GitRepo ahead = Repo("ahead");
+        clean.SetStatus(new RepoStatus(0, 0, 0, 0));
+        changed.SetStatus(new RepoStatus(0, 0, 0, 0, HasLocalChanges: true));
+        ahead.SetStatus(new RepoStatus(0, 0, 0, 2));
+
+        CollectionAssert.AreEqual(
+            new[] { "changed" },
+            RepoListPolicy.Arrange([clean, changed, ahead], new Dictionary<string, long>(), null, onlyDirty: true)
+                .Select(r => r.Name)
+                .ToArray());
+    }
+
     private static string[] Names(string query) =>
         RepoListPolicy.Arrange(Repos, new Dictionary<string, long>(), query).Select(r => r.Name).ToArray();
 

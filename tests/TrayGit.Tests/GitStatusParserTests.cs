@@ -41,6 +41,20 @@ public sealed class GitStatusParserTests
     }
 
     [TestMethod]
+    public void LocalChangesAreDistinctFromAheadAndBehind()
+    {
+        RepoStatus changed = GitStatusParser.Combine("-\t-\timage.png\n", "1 .M N... 100644 100644 100644 abc def file.png\n");
+        RepoStatus untracked = GitStatusParser.Combine("", "# branch.head main\n? new.txt\n");
+        RepoStatus ahead = GitStatusParser.Combine("", "# branch.ab +2 -0\n");
+
+        Assert.IsTrue(changed.IsDirty);
+        Assert.IsTrue(untracked.IsDirty);
+        Assert.IsFalse(ahead.IsDirty);
+        Assert.IsFalse(ahead.IsClean);
+        Assert.IsFalse(GitStatusParser.HasLocalChanges("# branch.oid abc\n# branch.head main\n"));
+    }
+
+    [TestMethod]
     public void FavoriteTextAndChangeNotification()
     {
         GitRepo repo = new("x", @"C:\src\x", "x", null, null, null);
