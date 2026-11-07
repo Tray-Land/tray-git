@@ -10,6 +10,7 @@ public sealed partial class RepoItemViewModel : ObservableObject, IDisposable
     private readonly Func<GitRepo, Task> _fetchAsync;
     private readonly Func<GitRepo, Task> _pullAsync;
     private readonly Func<GitRepo, Task> _pushAsync;
+    private readonly Action<GitRepo> _showDetails;
     private readonly Action<GitRepo> _toggleFavorite;
     private readonly Action<GitRepo> _copyPath;
 
@@ -20,6 +21,7 @@ public sealed partial class RepoItemViewModel : ObservableObject, IDisposable
         Func<GitRepo, Task> fetchAsync,
         Func<GitRepo, Task> pullAsync,
         Func<GitRepo, Task> pushAsync,
+        Action<GitRepo> showDetails,
         Action<GitRepo> toggleFavorite,
         Action<GitRepo> copyPath,
         Func<ActionDef, GitRepo, Task> runActionAsync)
@@ -28,6 +30,7 @@ public sealed partial class RepoItemViewModel : ObservableObject, IDisposable
         _fetchAsync = fetchAsync;
         _pullAsync = pullAsync;
         _pushAsync = pushAsync;
+        _showDetails = showDetails;
         _toggleFavorite = toggleFavorite;
         _copyPath = copyPath;
         Actions = new ObservableCollection<RepoActionViewModel>(
@@ -63,6 +66,9 @@ public sealed partial class RepoItemViewModel : ObservableObject, IDisposable
 
     [RelayCommand]
     private void ToggleFavorite() => _toggleFavorite(Repo);
+
+    [RelayCommand]
+    private void ViewDetails() => _showDetails(Repo);
 
     [RelayCommand]
     private void CopyPath() => _copyPath(Repo);

@@ -1,3 +1,5 @@
+using TrayGit.Core;
+
 namespace TrayGit.Services;
 
 /// <summary>Coordinates view-model requests that change the tray app's shell.</summary>
@@ -10,6 +12,8 @@ public interface ITrayHost
     void HideFlyout();
 
     void ShowSettings();
+
+    void ShowRepoDetails(GitRepo repo);
 
     Task<bool> ChooseSourceFolderAsync();
 

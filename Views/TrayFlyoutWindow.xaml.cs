@@ -3,6 +3,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
+using TrayGit.Core;
 using TrayGit.Controls;
 using TrayGit.Services;
 using Windows.Graphics;
@@ -54,6 +55,8 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private readonly DispatcherQueueTimer _closeTimer;
     private readonly DispatcherQueueTimer _animationTimer;
     private readonly Stopwatch _animationClock = new();
+    private readonly Dictionary<string, RepoDetailPage> _repoDetailPages = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, RepoDiffPage> _repoDiffPages = new(StringComparer.OrdinalIgnoreCase);
 
     private SettingsPage? _settingsPage;
     private bool _isPickerOpen;
@@ -113,6 +116,10 @@ public sealed partial class TrayFlyoutWindow : WindowEx
 
     public bool IsShowingSettings => PageHost.Content is SettingsPage;
 
+    public bool IsShowingRepoDetails => PageHost.Content is RepoDetailPage;
+
+    public bool IsShowingRepoDiff => PageHost.Content is RepoDiffPage;
+
     /// <summary>Shows the popup on the repo list, or hides it if already visible (tray-icon click behavior).</summary>
     public void Toggle()
     {
@@ -134,9 +141,41 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     public void ShowSettingsPage()
     {
         _settingsPage ??= new SettingsPage(ShowMainPage);
-        _page.OnHidden(); // no scanning behind the settings page
+        HideActivePage();
         PageHost.Content = _settingsPage;
         _settingsPage.OnShown();
+    }
+
+    public void ShowRepoDetailsPage(GitRepo repo)
+    {
+        HideActivePage();
+        if (!_repoDetailPages.TryGetValue(repo.Path, out RepoDetailPage? page))
+        {
+            page = new RepoDetailPage(repo, ShowMainPage, ShowRepoDiffPage);
+            _repoDetailPages.Add(repo.Path, page);
+        }
+
+        PageHost.Content = page;
+        if (_isPopupVisible)
+        {
+            page.OnShown();
+        }
+    }
+
+    private void ShowRepoDiffPage(GitRepo repo)
+    {
+        HideActivePage();
+        if (!_repoDiffPages.TryGetValue(repo.Path, out RepoDiffPage? page))
+        {
+            page = new RepoDiffPage(repo, () => ShowRepoDetailsPage(repo));
+            _repoDiffPages.Add(repo.Path, page);
+        }
+
+        PageHost.Content = page;
+        if (_isPopupVisible)
+        {
+            page.OnShown();
+        }
     }
 
     public void ShowMainPage()
@@ -146,6 +185,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
             return;
         }
 
+        HideActivePage();
         PageHost.Content = _page;
         if (_isPopupVisible)
         {
@@ -205,13 +245,20 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         Activate();
         PInvoke.SetForegroundWindow(_hwnd);
 
-        if (_settingsPage is not null && IsShowingSettings)
+        switch (PageHost.Content)
         {
-            _settingsPage.OnShown();
-        }
-        else
-        {
-            _page.OnShown();
+            case SettingsPage settings:
+                settings.OnShown();
+                break;
+            case RepoDetailPage details:
+                details.OnShown();
+                break;
+            case RepoDiffPage diff:
+                diff.OnShown();
+                break;
+            default:
+                _page.OnShown();
+                break;
         }
     }
 
@@ -227,7 +274,7 @@ public sealed partial class TrayFlyoutWindow : WindowEx
 
         _isPopupVisible = false;
         _lastDismissedAtUtc = DateTime.UtcNow;
-        _page.OnHidden();
+        HideActivePage();
         PlayHideAnimation();
 
         _closeTimer.Stop();
@@ -249,8 +296,20 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         _hideTimer.Stop();
         _closeTimer.Stop();
         _animationTimer.Stop();
-        _page.OnHidden();
+        HideActivePage();
         _page.Dispose();
+        foreach (RepoDetailPage page in _repoDetailPages.Values)
+        {
+            page.Dispose();
+        }
+
+        foreach (RepoDiffPage page in _repoDiffPages.Values)
+        {
+            page.Dispose();
+        }
+
+        _repoDetailPages.Clear();
+        _repoDiffPages.Clear();
         PageHost.Content = null;
         _settingsPage = null;
 
@@ -431,11 +490,15 @@ public sealed partial class TrayFlyoutWindow : WindowEx
         return className.SequenceEqual("Xaml_WindowedPopupClass") || className.SequenceEqual("#32768");
     }
 
-    // Escape goes back from settings first, then clears the filter, then hides.
+    // Escape goes back through drill-in pages, then clears the filter, then hides.
     private void Escape_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        if (IsShowingSettings)
+        if (IsShowingRepoDiff)
+        {
+            ((RepoDiffPage)PageHost.Content).ViewModel.BackCommand.Execute(null);
+        }
+        else if (IsShowingRepoDetails || IsShowingSettings)
         {
             ShowMainPage();
         }
@@ -448,15 +511,46 @@ public sealed partial class TrayFlyoutWindow : WindowEx
     private void Back_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        ShowMainPage();
+        if (IsShowingRepoDiff)
+        {
+            ((RepoDiffPage)PageHost.Content).ViewModel.BackCommand.Execute(null);
+        }
+        else
+        {
+            ShowMainPage();
+        }
     }
 
     private void PopupRoot_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
-        if (IsShowingSettings && e.GetCurrentPoint(PopupRoot).Properties.IsXButton1Pressed)
+        if (e.GetCurrentPoint(PopupRoot).Properties.IsXButton1Pressed
+            && (IsShowingSettings || IsShowingRepoDetails || IsShowingRepoDiff))
         {
             e.Handled = true;
-            ShowMainPage();
+            if (IsShowingRepoDiff)
+            {
+                ((RepoDiffPage)PageHost.Content).ViewModel.BackCommand.Execute(null);
+            }
+            else
+            {
+                ShowMainPage();
+            }
+        }
+    }
+
+    private void HideActivePage()
+    {
+        switch (PageHost.Content)
+        {
+            case FlyoutPage page:
+                page.OnHidden();
+                break;
+            case RepoDetailPage details:
+                details.OnHidden();
+                break;
+            case RepoDiffPage diff:
+                diff.OnHidden();
+                break;
         }
     }
 }

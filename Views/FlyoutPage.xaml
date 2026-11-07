@@ -147,6 +147,15 @@
                             <Grid.ContextFlyout>
                                 <MenuFlyout>
                                     <MenuFlyoutItem
+                                        AutomationProperties.AutomationId="repo-details"
+                                        Command="{x:Bind ViewDetailsCommand}"
+                                        Text="View details">
+                                        <MenuFlyoutItem.Icon>
+                                            <FontIcon Glyph="&#xE946;" />
+                                        </MenuFlyoutItem.Icon>
+                                    </MenuFlyoutItem>
+                                    <MenuFlyoutSeparator />
+                                    <MenuFlyoutItem
                                         AutomationProperties.AutomationId="repo-fetch"
                                         Command="{x:Bind FetchCommand}"
                                         Text="Fetch">
@@ -269,46 +278,56 @@
                                     TextTrimming="CharacterEllipsis"
                                     TextWrapping="NoWrap" />
                             </Grid>
-                            <ItemsControl
+                            <StackPanel
                                 Canvas.ZIndex="1"
                                 HorizontalAlignment="Right"
-                                IsTabStop="False"
-                                ItemsSource="{x:Bind Actions}">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal" Spacing="2" />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="viewModels:RepoActionViewModel">
-                                        <Button
-                                            AutomationProperties.AutomationId="{x:Bind Action.Id}"
-                                            AutomationProperties.Name="{x:Bind Name}"
-                                            Command="{x:Bind RunCommand}"
-                                            IsEnabled="{x:Bind IsEnabled}"
-                                            Opacity="{x:Bind Opacity}"
-                                            Style="{StaticResource FlyoutIconButtonStyle}"
-                                            ToolTipService.ToolTip="{x:Bind Tooltip}">
-                                            <Grid>
-                                                <Image
-                                                    Width="16"
-                                                    Height="16"
-                                                    Source="{x:Bind views:ActionIcons.For(Image)}"
-                                                    Visibility="{x:Bind HasImage}" />
-                                                <FontIcon
-                                                    FontSize="14"
-                                                    Glyph="{x:Bind Glyph}"
-                                                    Visibility="{x:Bind HasGlyph}" />
-                                                <TextBlock
-                                                    FontSize="11"
-                                                    FontWeight="SemiBold"
-                                                    Text="{x:Bind Badge}"
-                                                    Visibility="{x:Bind HasBadge}" />
-                                            </Grid>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                Orientation="Horizontal"
+                                Spacing="2">
+                                <ItemsControl IsTabStop="False" ItemsSource="{x:Bind Actions}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="2" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="viewModels:RepoActionViewModel">
+                                            <Button
+                                                AutomationProperties.AutomationId="{x:Bind Action.Id}"
+                                                AutomationProperties.Name="{x:Bind Name}"
+                                                Command="{x:Bind RunCommand}"
+                                                IsEnabled="{x:Bind IsEnabled}"
+                                                Opacity="{x:Bind Opacity}"
+                                                Style="{StaticResource FlyoutIconButtonStyle}"
+                                                ToolTipService.ToolTip="{x:Bind Tooltip}">
+                                                <Grid>
+                                                    <Image
+                                                        Width="16"
+                                                        Height="16"
+                                                        Source="{x:Bind views:ActionIcons.For(Image)}"
+                                                        Visibility="{x:Bind HasImage}" />
+                                                    <FontIcon
+                                                        FontSize="14"
+                                                        Glyph="{x:Bind Glyph}"
+                                                        Visibility="{x:Bind HasGlyph}" />
+                                                    <TextBlock
+                                                        FontSize="11"
+                                                        FontWeight="SemiBold"
+                                                        Text="{x:Bind Badge}"
+                                                        Visibility="{x:Bind HasBadge}" />
+                                                </Grid>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button
+                                    AutomationProperties.AutomationId="repo-details-button"
+                                    AutomationProperties.Name="View repo details"
+                                    Command="{x:Bind ViewDetailsCommand}"
+                                    Style="{StaticResource FlyoutIconButtonStyle}"
+                                    ToolTipService.ToolTip="View repo details">
+                                    <FontIcon FontSize="12" Glyph="&#xE76C;" />
+                                </Button>
+                            </StackPanel>
                         </Grid>
                     </SwipeControl>
                 </DataTemplate>

@@ -1,6 +1,7 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using TrayGit.Core;
 using TrayGit.Services;
 using TrayGit.Views;
 using WinUIEx;
@@ -111,6 +112,16 @@ public partial class App : Application, ITrayHost
     }
 
     public void HideFlyout() => _flyout?.HidePopup();
+
+    public void ShowRepoDetails(GitRepo repo)
+    {
+        TrayFlyoutWindow flyout = EnsureFlyout();
+        flyout.ShowRepoDetailsPage(repo);
+        if (!flyout.IsPopupVisible)
+        {
+            flyout.ShowPopup();
+        }
+    }
 
     /// <summary>
     /// True when the global hotkey is on but Windows refused it, usually because another app owns

@@ -17,6 +17,7 @@ Tray Git is a WinUI 3 app that lives in the Windows notification area. It has no
 - **Recent first:** repos you've used through Tray Git sort to the top. Otherwise the list is alphabetical.
 - **Branch at a glance:** each row shows the checked-out branch (or short commit when detached), then its status, then the parent folder. Status is lines added in green and removed in red (working tree and index versus `HEAD`), `↓n` commits to pull and `↑n` commits to push.
 - **Fetch:** right-click a row, or swipe it left on a touch screen or pen, and choose **Fetch** to run `git fetch` and refresh that row's status. A spinner shows while it runs, and errors appear in the flyout.
+- **Repository details:** use the chevron on a repo row, or choose **View details** from its context menu, to open a dedicated page with the current branch, path, remote, ahead/behind state and changed files. It also has one-tap **Fetch**, **Pull**, **Push** and **Sync** controls, plus the 30 most recent commits with authors and dates and a complete list of local and remote branches. **View full diff** opens a second page with the selectable, monospaced patch relative to `HEAD`.
 - **Favorites:** right-click a row, or swipe it left, and choose **Favorite** (or **Unfavorite**). Favorites get a star next to the name. The star button in the header narrows the list to favorites only; it stays on until you turn it off, and the filter box still applies within it.
 - **Dirty only:** the edit button between Favorites and Rescan narrows the list to repos with local working-copy changes, including staged, modified, binary, and untracked files. It can be combined with Favorites and the filter box; repos that are only ahead or behind are not considered dirty.
 - **Worktrees:** `git worktree` checkouts are listed as their own entries, with the remote read from the main repo.
@@ -34,7 +35,7 @@ Windows picks the right build for your PC (x64 or ARM64), installs the Windows A
 
 **Current release issue:** the latest published feed points to a different release tag, so its package downloads fail. The release also does not include the certificate needed to trust its self-signed package. A corrected release is needed before this install link can work.
 
-Requirements: Windows 10 1809 (build 17763) or later, or Windows 11, on x64 or ARM64. [Windows Terminal](https://aka.ms/terminal) is recommended but not required. [Git](https://git-scm.com/download/win) must be on the PATH for the status segment and Fetch; without it the list still works, just without status.
+Requirements: Windows 10 1809 (build 17763) or later, or Windows 11, on x64 or ARM64. [Windows Terminal](https://aka.ms/terminal) is recommended but not required. [Git](https://git-scm.com/download/win) must be on the PATH for status, repository details and Git actions; without it the list still works, just without those features.
 
 ## Setup
 
@@ -42,8 +43,9 @@ On first run the flyout opens with **Choose source folder**. Pick your folder an
 
 ## Privacy and footprint
 
-- Tray Git makes **no network calls of its own**. The only things that leave your machine are the browser you open with the Remote button and the `git fetch` you start with Fetch, which uses your normal git remotes and credentials.
+- Tray Git makes **no network calls of its own**. The only things that leave your machine are the browser you open with the Remote button and the `git fetch`, `pull`, `push` or `sync` you start, which use your normal git remotes and credentials.
 - The list and scan read only each repo's `.git/HEAD` and `.git/config`. While the flyout is open, the status segment runs read-only `git diff HEAD --numstat` and `git status` in each repo (no locks taken, no files changed), at most every 30 seconds per repo.
+- Repository details run local read-only commands only while that page is visible. The diff page reads `git diff HEAD`; untracked files are shown in the changes list but Git does not include their contents in the patch until they are staged.
 - The scan runs only while the flyout is open: when it opens and the last scan is over five minutes old, when you change the source folder, or when you press Rescan. Results are cached in the app's local folder (`repos.json`) so the list appears instantly.
 - Settings (the source folder, recent-use times, favorites and list-filter toggles) are stored in the app's local settings. Nothing is stored outside the app's package data.
 - When hidden for a minute, the flyout closes and returns its memory to Windows.
@@ -71,9 +73,10 @@ Publish the draft without changing its tag, then run `.\build-msix-for-gh.ps1 -V
 | `App.xaml.cs` | Tray icon, context menu, single instance, the only exit path |
 | `Views/TrayFlyoutWindow` | Borderless popup: placement, light dismiss, animation, idle close, page swap, and the folder picker (light dismiss pauses while it is open) |
 | `Views/FlyoutPage` | The repo list, filter, and actions |
+| `Views/RepoDetailPage`, `Views/RepoDiffPage` | Repository metadata, Git actions, changes, commits, branches, and full diff |
 | `Views/SettingsPage` | Settings page shown in the flyout: source folder, Start with Windows, version |
-| `Core/` | Platform-free logic: `RepoScanner`, `GitMetadata` (`.git` parsing), `RemoteUrlPolicy` (remote → web URL), `RepoListPolicy` (filter and order), `RepoStatus` (git output parsing) |
-| `Services/RepoStore`, `Services/RepoLauncher`, `Services/GitService` | Scan cache, the terminal / folder / remote launchers, and the git status and fetch runner |
+| `Core/` | Platform-free logic: `RepoScanner`, `GitMetadata` (`.git` parsing), `RemoteUrlPolicy` (remote → web URL), `RepoListPolicy` (filter and order), `RepoStatus` and `RepoDetails` (git output parsing) |
+| `Services/RepoStore`, `Services/RepoLauncher`, `Services/GitService` | Scan cache, the terminal / folder / remote launchers, and the git status, detail, diff and operation runner |
 | `tests/TrayGit.Tests` | MSTest project that links `Core/` |
 
 ## License

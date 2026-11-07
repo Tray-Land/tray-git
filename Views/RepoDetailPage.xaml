@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="TrayGit.Views.RepoDetailPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:core="using:TrayGit.Core"
+    x:DefaultBindMode="OneWay"
+    Background="Transparent">
+
+    <Grid Padding="16,12,12,16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button
+                x:Name="BackButton"
+                Margin="-8,0,0,0"
+                AutomationProperties.AutomationId="repo-detail-back"
+                AutomationProperties.Name="Back"
+                Command="{x:Bind ViewModel.BackCommand}"
+                Style="{StaticResource FlyoutIconButtonStyle}"
+                ToolTipService.ToolTip="Back to repositories">
+                <FontIcon FontSize="14" Glyph="&#xE72B;" />
+            </Button>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock
+                    Style="{StaticResource SubtitleTextBlockStyle}"
+                    Text="{x:Bind ViewModel.RepoName}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap" />
+                <TextBlock
+                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Text="{x:Bind ViewModel.BranchText}"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="NoWrap" />
+            </StackPanel>
+            <Button
+                Grid.Column="2"
+                AutomationProperties.AutomationId="repo-detail-refresh"
+                AutomationProperties.Name="Refresh repository details"
+                Command="{x:Bind ViewModel.RefreshCommand}"
+                Style="{StaticResource FlyoutIconButtonStyle}"
+                ToolTipService.ToolTip="Refresh repository details">
+                <FontIcon FontSize="14" Glyph="&#xE72C;" />
+            </Button>
+        </Grid>
+
+        <InfoBar
+            Grid.Row="1"
+            IsClosable="True"
+            IsOpen="{x:Bind ViewModel.IsStatusOpen, Mode=TwoWay}"
+            Message="{x:Bind ViewModel.StatusMessage}"
+            Severity="Warning"
+            Title="{x:Bind ViewModel.StatusTitle}" />
+
+        <ScrollViewer Grid.Row="2" Margin="0,0,-4,0">
+            <StackPanel Margin="0,0,4,0" Spacing="8">
+                <Grid ColumnSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.AutomationId="repo-detail-fetch"
+                        AutomationProperties.Name="Fetch"
+                        Command="{x:Bind ViewModel.FetchCommand}">
+                        <StackPanel Spacing="3">
+                            <FontIcon FontSize="14" Glyph="&#xE895;" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Fetch" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Grid.Column="1"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.AutomationId="repo-detail-pull"
+                        AutomationProperties.Name="Pull"
+                        Command="{x:Bind ViewModel.PullCommand}">
+                        <StackPanel Spacing="3">
+                            <FontIcon FontSize="14" Glyph="&#xE896;" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Pull" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Grid.Column="2"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.AutomationId="repo-detail-push"
+                        AutomationProperties.Name="Push"
+                        Command="{x:Bind ViewModel.PushCommand}">
+                        <StackPanel Spacing="3">
+                            <FontIcon FontSize="14" Glyph="&#xE898;" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Push" />
+                        </StackPanel>
+                    </Button>
+                    <Button
+                        Grid.Column="3"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.AutomationId="repo-detail-sync"
+                        AutomationProperties.Name="Sync"
+                        Command="{x:Bind ViewModel.SyncCommand}">
+                        <StackPanel Spacing="3">
+                            <FontIcon FontSize="14" Glyph="&#xE895;" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextBlockStyle}"
+                                Text="Sync" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid
+                    Padding="16,12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    ColumnSpacing="12"
+                    CornerRadius="{ThemeResource ControlCornerRadius}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel
+                        PointerEntered="CopyBranch_PointerEntered"
+                        PointerExited="CopyBranch_PointerExited">
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Current branch" />
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                MaxWidth="190"
+                                Style="{StaticResource BodyStrongTextBlockStyle}"
+                                Text="{x:Bind ViewModel.BranchText}"
+                                TextTrimming="CharacterEllipsis" />
+                            <Button
+                                Width="28"
+                                Height="28"
+                                AutomationProperties.AutomationId="repo-current-branch-copy"
+                                AutomationProperties.Name="Copy branch name"
+                                Command="{x:Bind ViewModel.CopyCurrentBranchCommand}"
+                                GotFocus="CopyBranchButton_GotFocus"
+                                LostFocus="CopyBranchButton_LostFocus"
+                                Opacity="0"
+                                Style="{StaticResource FlyoutIconButtonStyle}"
+                                ToolTipService.ToolTip="Copy branch name">
+                                <FontIcon FontSize="11" Glyph="&#xE8C8;" />
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                        <TextBlock
+                            HorizontalAlignment="Right"
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Remote sync" />
+                        <TextBlock
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource BodyStrongTextBlockStyle}"
+                            Text="{x:Bind ViewModel.SyncText}" />
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel
+                    Padding="16,12"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{ThemeResource ControlCornerRadius}"
+                    Spacing="8">
+                    <StackPanel>
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Path" />
+                        <TextBlock
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind ViewModel.PathText}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Style="{StaticResource CaptionTextBlockStyle}"
+                            Text="Remote" />
+                        <TextBlock
+                            IsTextSelectionEnabled="True"
+                            Text="{x:Bind ViewModel.RemoteText}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                </StackPanel>
+
+                <Expander
+                    AutomationProperties.Name="{x:Bind ViewModel.ChangesText}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Header="{x:Bind ViewModel.ChangesText}"
+                    IsExpanded="True">
+                    <StackPanel Spacing="8">
+                        <Button
+                            AutomationProperties.AutomationId="repo-detail-full-diff"
+                            AutomationProperties.Name="View full diff"
+                            Command="{x:Bind ViewModel.ViewDiffCommand}"
+                            Content="View full diff"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Visibility="{x:Bind ViewModel.HasChanges}" />
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="No local changes."
+                            Visibility="{x:Bind ViewModel.HasNoChanges}" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Changes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="core:GitFileChange">
+                                    <Grid
+                                        Padding="0,6"
+                                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            VerticalAlignment="Top"
+                                            Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{x:Bind Status, Mode=OneTime}" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock
+                                                Text="{x:Bind FileName, Mode=OneTime}"
+                                                TextTrimming="CharacterEllipsis"
+                                                TextWrapping="NoWrap"
+                                                ToolTipService.ToolTip="{x:Bind Path, Mode=OneTime}" />
+                                            <TextBlock
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind DirectoryText, Mode=OneTime}"
+                                                TextTrimming="CharacterEllipsis"
+                                                TextWrapping="NoWrap" />
+                                            <TextBlock
+                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind StateText, Mode=OneTime}" />
+                                        </StackPanel>
+                                        <TextBlock
+                                            Grid.Column="2"
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{x:Bind LineChangeText, Mode=OneTime}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Expander>
+
+                <Expander
+                    AutomationProperties.Name="{x:Bind ViewModel.CommitsText}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Header="{x:Bind ViewModel.CommitsText}">
+                    <StackPanel Spacing="0">
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="This repository has no commits yet."
+                            Visibility="{x:Bind ViewModel.HasNoCommits}" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Commits}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="core:GitCommit">
+                                    <Grid
+                                        Padding="0,7"
+                                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                            FontFamily="Consolas"
+                                            Style="{StaticResource CaptionTextBlockStyle}"
+                                            Text="{x:Bind ShortHash, Mode=OneTime}" />
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock
+                                                Text="{x:Bind Subject, Mode=OneTime}"
+                                                TextTrimming="CharacterEllipsis"
+                                                TextWrapping="NoWrap"
+                                                ToolTipService.ToolTip="{x:Bind Subject, Mode=OneTime}" />
+                                            <TextBlock
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind Author, Mode=OneTime}"
+                                                TextTrimming="CharacterEllipsis" />
+                                            <TextBlock
+                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind DateText, Mode=OneTime}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Expander>
+
+                <Expander
+                    AutomationProperties.Name="{x:Bind ViewModel.BranchesText}"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Header="{x:Bind ViewModel.BranchesText}">
+                    <StackPanel Spacing="0">
+                        <TextBlock
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="No branches were found."
+                            Visibility="{x:Bind ViewModel.HasNoBranches}" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.Branches}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="core:GitBranch">
+                                    <Grid
+                                        Padding="0,7"
+                                        BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                                        BorderThickness="0,0,0,1"
+                                        ColumnSpacing="8"
+                                        PointerEntered="CopyBranch_PointerEntered"
+                                        PointerExited="CopyBranch_PointerExited">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <FontIcon
+                                            FontSize="12"
+                                            Glyph="&#xE73E;"
+                                            Visibility="{x:Bind IsCurrent, Mode=OneTime}" />
+                                        <StackPanel Grid.Column="1">
+                                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                                <TextBlock
+                                                    VerticalAlignment="Center"
+                                                    Style="{StaticResource BodyStrongTextBlockStyle}"
+                                                    Text="{x:Bind Name, Mode=OneTime}"
+                                                    TextTrimming="CharacterEllipsis" />
+                                                <Button
+                                                    Width="24"
+                                                    Height="24"
+                                                    AutomationProperties.AutomationId="repo-branch-copy"
+                                                    AutomationProperties.Name="Copy branch name"
+                                                    Click="BranchCopy_Click"
+                                                    GotFocus="CopyBranchButton_GotFocus"
+                                                    LostFocus="CopyBranchButton_LostFocus"
+                                                    Opacity="0"
+                                                    Style="{StaticResource FlyoutIconButtonStyle}"
+                                                    ToolTipService.ToolTip="Copy branch name">
+                                                    <FontIcon FontSize="10" Glyph="&#xE8C8;" />
+                                                </Button>
+                                            </StackPanel>
+                                            <TextBlock
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind Upstream, Mode=OneTime}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+                                            <TextBlock
+                                                HorizontalAlignment="Right"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind KindText, Mode=OneTime}" />
+                                            <TextBlock
+                                                HorizontalAlignment="Right"
+                                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
+                                                FontFamily="Consolas"
+                                                Style="{StaticResource CaptionTextBlockStyle}"
+                                                Text="{x:Bind ShortHash, Mode=OneTime}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="3" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                VerticalAlignment="Center"
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Style="{StaticResource CaptionTextBlockStyle}"
+                Text="{x:Bind ViewModel.OperationText}"
+                TextTrimming="CharacterEllipsis" />
+            <ProgressRing
+                Grid.Column="1"
+                Width="16"
+                Height="16"
+                IsActive="{x:Bind ViewModel.IsBusy}" />
+        </Grid>
+    </Grid>
+</Page>

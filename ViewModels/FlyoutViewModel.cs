@@ -446,6 +446,8 @@ public sealed partial class FlyoutViewModel : ObservableObject, IDisposable
             FavoritesOnly ? _favorites : null,
             DirtyOnly);
 
+    private void ShowRepoDetails(GitRepo repo) => _host.ShowRepoDetails(repo);
+
     private void ShowList()
     {
         string? root = SettingsService.SourceFolder;
@@ -463,6 +465,7 @@ public sealed partial class FlyoutViewModel : ObservableObject, IDisposable
                 FetchAsync,
                 PullAsync,
                 PushAsync,
+                ShowRepoDetails,
                 ToggleFavorite,
                 CopyPath,
                 PerformAsync));
