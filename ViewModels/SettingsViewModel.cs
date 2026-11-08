@@ -263,6 +263,7 @@ public sealed partial class SettingsViewModel : ObservableObject
 
         ActionChoices.Clear();
         ActionChoices.Add(ActionCatalog.None);
+        ActionChoices.Add(ActionCatalog.Details);
         foreach (ActionDef action in all)
         {
             ActionChoices.Add(action);

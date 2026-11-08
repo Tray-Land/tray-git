@@ -6,6 +6,7 @@ public static class ActionKind
     public const string Terminal = "terminal";
     public const string Folder = "folder";
     public const string Remote = "remote";
+    public const string Details = "details";
 
     /// <summary>Opens a terminal in the repo and runs <see cref="ActionDef.Command"/>.</summary>
     public const string Command = "command";
@@ -24,9 +25,11 @@ public static class ActionCatalog
     public const string FolderId = "folder";
     public const string RemoteId = "remote";
     public const string NoneId = "none";
+    public const string DetailsId = "details";
     public const string CustomPrefix = "custom:";
 
     public static readonly ActionDef None = new(NoneId, "Do nothing", ActionKind.None);
+    public static readonly ActionDef Details = new(DetailsId, "Open repo details", ActionKind.Details);
 
     /// <summary>The plain actions, then the AI coding CLIs. Only the plain ones are buttons by default.</summary>
     public static readonly IReadOnlyList<ActionDef> BuiltIn = (ActionDef[])
@@ -84,7 +87,7 @@ public static class ActionCatalog
     /// <summary>The action for <paramref name="id"/>, else the one for <paramref name="fallbackId"/>, else <see cref="None"/>.</summary>
     public static ActionDef Resolve(string? id, IEnumerable<ActionDef> custom, string fallbackId)
     {
-        List<ActionDef> all = [None, .. All(custom)];
+        List<ActionDef> all = [None, Details, .. All(custom)];
         return all.FirstOrDefault(a => a.Id == id) ?? all.FirstOrDefault(a => a.Id == fallbackId) ?? None;
     }
 

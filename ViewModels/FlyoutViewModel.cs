@@ -549,6 +549,12 @@ public sealed partial class FlyoutViewModel : ObservableObject, IDisposable
 
         try
         {
+            if (action.Kind == ActionKind.Details)
+            {
+                ShowRepoDetails(repo);
+                return;
+            }
+
             _host.HideFlyout();
             if (action.Kind == ActionKind.Remote)
             {

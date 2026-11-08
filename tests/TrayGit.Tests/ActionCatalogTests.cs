@@ -70,6 +70,19 @@ public sealed class ActionCatalogTests
     }
 
     [TestMethod]
+    [DataRow(ActionCatalog.DefaultEnterId)]
+    [DataRow(ActionCatalog.DefaultClickId)]
+    [DataRow(ActionCatalog.DefaultDoubleClickId)]
+    public void Details_action_resolves_for_each_interaction(string fallbackId)
+    {
+        ActionDef action = ActionCatalog.Resolve(ActionCatalog.DetailsId, [], fallbackId);
+
+        Assert.AreEqual("Open repo details", action.Name);
+        Assert.AreEqual(ActionKind.Details, action.Kind);
+        Assert.AreEqual(ActionCatalog.DetailsId, action.Id);
+    }
+
+    [TestMethod]
     [DataRow("Aider", "Ai")]
     [DataRow("my tool", "MT")]
     [DataRow("x", "X")]
