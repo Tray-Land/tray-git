@@ -29,6 +29,8 @@ Tray Git is a WinUI 3 app that lives in the Windows notification area. It has no
 
 ## Install
 
+[<img src="docs/MSIX.svg" alt="Install Tray Git (MSIX)" width="212">](https://github.com/Tray-Land/tray-git/releases/latest/download/TrayGit.appinstaller)
+
 Download and open **[TrayGit.appinstaller](https://github.com/Tray-Land/tray-git/releases/latest/download/TrayGit.appinstaller)** with Windows App Installer.
 
 Windows picks the right build for your PC (x64 or ARM64), installs the Windows App Runtime if it is missing, and keeps Tray Git up to date from the newest stable release: it checks when the app starts and in the background, and downloads only the parts of the package that changed.
