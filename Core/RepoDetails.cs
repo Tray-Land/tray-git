@@ -19,9 +19,21 @@ public sealed record GitBranch(
     string ShortHash,
     bool IsCurrent,
     bool IsRemote,
-    string? Upstream)
+    string? Upstream,
+    int? Ahead = null,
+    int? Behind = null,
+    string? CompareBase = null)
 {
     public string KindText => IsRemote ? "Remote" : "Local";
+
+    /// <summary>"↑3 ↓12" relative to <see cref="CompareBase"/>; empty when unknown or level with it.</summary>
+    public string AheadBehindText => Ahead is null || Behind is null || (Ahead == 0 && Behind == 0)
+        ? ""
+        : $"↑{Ahead}  ↓{Behind}";
+
+    public string AheadBehindTooltip => AheadBehindText.Length == 0
+        ? ""
+        : $"{Ahead} ahead, {Behind} behind {CompareBase}";
 }
 
 /// <summary>A file changed relative to HEAD.</summary>
@@ -150,6 +162,42 @@ public static class GitDetailsParser
         }
 
         return branches;
+    }
+
+    /// <summary>The ref to compare branches with: origin's default, else the first of the usual names that exists.</summary>
+    public static string? PickCompareBase(string? originHead, IEnumerable<GitBranch> branches)
+    {
+        if (!string.IsNullOrWhiteSpace(originHead))
+        {
+            return originHead.Trim();
+        }
+
+        HashSet<string> names = branches.Select(b => b.Name).ToHashSet(StringComparer.Ordinal);
+        return new[] { "origin/main", "origin/master", "main", "master" }.FirstOrDefault(names.Contains);
+    }
+
+    /// <summary>Output of <c>for-each-ref --format=%(refname:short)%1f%(ahead-behind:BASE)</c>, merged into <paramref name="branches"/>.</summary>
+    public static IReadOnlyList<GitBranch> ApplyAheadBehind(
+        IReadOnlyList<GitBranch> branches,
+        string output,
+        string compareBase)
+    {
+        Dictionary<string, (int Ahead, int Behind)> counts = new(StringComparer.Ordinal);
+        foreach (string line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] fields = line.TrimEnd('\r').Split(FieldSeparator);
+            string[] numbers = fields.Length == 2 ? fields[1].Split(' ') : [];
+            if (numbers.Length == 2
+                && int.TryParse(numbers[0], NumberStyles.None, CultureInfo.InvariantCulture, out int ahead)
+                && int.TryParse(numbers[1], NumberStyles.None, CultureInfo.InvariantCulture, out int behind))
+            {
+                counts[fields[0]] = (ahead, behind);
+            }
+        }
+
+        return branches.Select(branch => counts.TryGetValue(branch.Name, out (int Ahead, int Behind) c)
+            ? branch with { Ahead = c.Ahead, Behind = c.Behind, CompareBase = compareBase }
+            : branch).ToArray();
     }
 
     private static Dictionary<string, (int? Added, int? Removed)> ParseNumstat(

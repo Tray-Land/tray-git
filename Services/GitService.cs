@@ -104,10 +104,34 @@ internal static class GitService
             StatusTimeout,
             cancellationToken);
 
+        IReadOnlyList<GitBranch> parsed = GitDetailsParser.ParseBranches(branches.Output);
+
+        // Ahead/behind needs git 2.41+; on older git, or with no base branch, the counts are simply left out.
+        GitResult? originHead = await RunAsync(
+            repoPath,
+            ["symbolic-ref", "--short", "--quiet", "refs/remotes/origin/HEAD"],
+            StatusTimeout,
+            cancellationToken);
+        string? compareBase = GitDetailsParser.PickCompareBase(
+            originHead is { ExitCode: 0 } ? originHead.Output : null,
+            parsed);
+        if (compareBase is not null)
+        {
+            GitResult? counts = await RunAsync(
+                repoPath,
+                ["for-each-ref", $"--format=%(refname:short)%1f%(ahead-behind:{compareBase})", "refs/heads", "refs/remotes"],
+                StatusTimeout,
+                cancellationToken);
+            if (counts is { ExitCode: 0 })
+            {
+                parsed = GitDetailsParser.ApplyAheadBehind(parsed, counts.Output, compareBase);
+            }
+        }
+
         return new RepoDetails(
             GitDetailsParser.ParseChanges(status.Output, numstat.Output),
             GitDetailsParser.ParseCommits(log.Output),
-            GitDetailsParser.ParseBranches(branches.Output));
+            parsed);
     }
 
     /// <summary>Reads the complete tracked working-tree and index diff relative to HEAD.</summary>

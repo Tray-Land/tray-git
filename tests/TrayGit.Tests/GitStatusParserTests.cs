@@ -144,4 +144,33 @@ public sealed class GitStatusParserTests
         Assert.IsTrue(branches[1].IsRemote);
         Assert.AreEqual("Remote", branches[1].KindText);
     }
+
+    [TestMethod]
+    public void AppliesAheadBehindCountsToBranches()
+    {
+        List<GitBranch> branches =
+        [
+            new("main", "a", true, false, null),
+            new("feature", "b", false, false, null),
+            new("origin/feature", "b", false, true, null),
+        ];
+        const string output = "main\u001f0 0\nfeature\u001f3 12\norigin/feature\u001f2 12\n";
+
+        List<GitBranch> result = [.. GitDetailsParser.ApplyAheadBehind(branches, output, "origin/main")];
+
+        Assert.AreEqual("", result[0].AheadBehindText);
+        Assert.AreEqual("↑3  ↓12", result[1].AheadBehindText);
+        Assert.AreEqual("3 ahead, 12 behind origin/main", result[1].AheadBehindTooltip);
+        Assert.AreEqual("↑2  ↓12", result[2].AheadBehindText);
+    }
+
+    [TestMethod]
+    public void PicksCompareBase()
+    {
+        List<GitBranch> branches = [new("master", "a", true, false, null), new("origin/master", "a", false, true, null)];
+
+        Assert.AreEqual("origin/dev", GitDetailsParser.PickCompareBase("origin/dev\n", branches));
+        Assert.AreEqual("origin/master", GitDetailsParser.PickCompareBase(null, branches));
+        Assert.IsNull(GitDetailsParser.PickCompareBase(null, []));
+    }
 }
