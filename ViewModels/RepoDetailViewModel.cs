@@ -26,15 +26,73 @@ public sealed partial class RepoDetailViewModel : ObservableObject, IDisposable
         _showDiff = showDiff;
         _clipboard = clipboard;
         Repo.PropertyChanged += Repo_PropertyChanged;
+        LoadActions();
     }
 
     public GitRepo Repo { get; }
+
+    /// <summary>The row toolbar actions, plus terminal and folder even when the user hid them from the row.</summary>
+    public ObservableCollection<RepoActionViewModel> Actions { get; } = [];
+
+    private void LoadActions()
+    {
+        List<ActionDef> actions = ActionCatalog.Toolbar(SettingsService.ToolbarActionIds, SettingsService.CustomActions);
+        foreach (string id in (string[])[ActionCatalog.TerminalId, ActionCatalog.FolderId])
+        {
+            if (actions.All(a => a.Id != id))
+            {
+                actions.Add(ActionCatalog.BuiltIn.First(a => a.Id == id));
+            }
+        }
+
+        Actions.Clear();
+        for (int i = 0; i < actions.Count; i++)
+        {
+            Actions.Add(new RepoActionViewModel(actions[i], Repo, true, RunActionAsync)
+            {
+                AccessKey = i < 9 ? (i + 1).ToString() : "",
+            });
+        }
+    }
+
+    private async Task RunActionAsync(ActionDef action, GitRepo repo)
+    {
+        try
+        {
+            App.Current.HideFlyout();
+            if (action.Kind == ActionKind.Remote)
+            {
+                await RepoLauncher.OpenRemoteAsync(repo);
+            }
+            else
+            {
+                RepoLauncher.Launch(action, repo);
+            }
+        }
+        catch (Exception ex)
+        {
+            App.Current.ShowFlyout();
+            ShowStatus($"Couldn't open {repo.Name}", ex.Message);
+        }
+    }
 
     public ObservableCollection<GitFileChange> Changes { get; } = [];
 
     public ObservableCollection<GitCommit> Commits { get; } = [];
 
     public ObservableCollection<GitBranch> Branches { get; } = [];
+
+    public ObservableCollection<GitBranch> LocalBranches { get; } = [];
+
+    public ObservableCollection<GitBranch> RemoteBranches { get; } = [];
+
+    public bool HasLocalBranches => LocalBranches.Count > 0;
+
+    public bool HasRemoteBranches => RemoteBranches.Count > 0;
+
+    public string LocalBranchesText => $"Local ({LocalBranches.Count})";
+
+    public string RemoteBranchesText => $"Remote ({RemoteBranches.Count})";
 
     public string BranchText => Repo.Branch ?? "Detached or unknown";
 
@@ -101,6 +159,7 @@ public sealed partial class RepoDetailViewModel : ObservableObject, IDisposable
     public void OnShown()
     {
         _isVisible = true;
+        LoadActions();
         _ = RefreshAsync();
     }
 
@@ -155,6 +214,12 @@ public sealed partial class RepoDetailViewModel : ObservableObject, IDisposable
             Replace(Changes, details.Changes);
             Replace(Commits, details.Commits);
             Replace(Branches, details.Branches);
+            Replace(LocalBranches, details.Branches.Where(b => !b.IsRemote));
+            Replace(RemoteBranches, details.Branches.Where(b => b.IsRemote));
+            OnPropertyChanged(nameof(HasLocalBranches));
+            OnPropertyChanged(nameof(HasRemoteBranches));
+            OnPropertyChanged(nameof(LocalBranchesText));
+            OnPropertyChanged(nameof(RemoteBranchesText));
             OnPropertyChanged(nameof(ChangesText));
             OnPropertyChanged(nameof(CommitsText));
             OnPropertyChanged(nameof(BranchesText));

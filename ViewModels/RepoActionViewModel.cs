@@ -26,6 +26,9 @@ public sealed partial class RepoActionViewModel : ObservableObject
 
     public double Opacity => IsExpanded ? 1 : 0;
 
+    [ObservableProperty]
+    public partial string AccessKey { get; set; } = "";
+
     public string Name => Action.Name;
 
     public string Tooltip => Action.Kind == ActionKind.Remote ? Repo.RemoteTooltip : Action.Name;

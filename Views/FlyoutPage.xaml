@@ -103,6 +103,7 @@
             ItemsSource="{x:Bind ViewModel.Repositories}"
             LostFocus="RepoList_LostFocus"
             PreviewKeyDown="RepoList_PreviewKeyDown"
+            SelectionChanged="RepoList_SelectionChanged"
             SelectionMode="Single">
             <ListView.ItemContainerStyle>
                 <Style BasedOn="{StaticResource DefaultListViewItemStyle}" TargetType="ListViewItem">

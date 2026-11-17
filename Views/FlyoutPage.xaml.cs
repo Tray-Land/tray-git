@@ -123,8 +123,62 @@ public sealed partial class FlyoutPage : Page, IDisposable
                 e.Handled = true;
                 selected.CopyPathCommand.Execute(null);
                 break;
+
+            case var key when index >= 0
+                && NumberOf(key) is int number
+                && !IsKeyDown(VirtualKey.Control)
+                && !IsKeyDown(VirtualKey.Menu)
+                && !IsKeyDown(VirtualKey.Shift)
+                && FocusManager.GetFocusedElement(XamlRoot) is not TextBox
+                && RepoList.SelectedItem is RepoItemViewModel target
+                && number <= target.Actions.Count:
+                e.Handled = true;
+                RepoActionViewModel action = target.Actions[number - 1];
+                if (action.IsEnabled)
+                {
+                    action.RunCommand.Execute(null);
+                }
+
+                break;
         }
     }
+
+    // Only the selected row carries access keys, so tapping Alt shows its 1..n hints.
+    private void RepoList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        foreach (object removed in e.RemovedItems)
+        {
+            SetAccessKeys(removed, false);
+        }
+
+        foreach (object added in e.AddedItems)
+        {
+            SetAccessKeys(added, true);
+        }
+    }
+
+    private void SetAccessKeys(object row, bool enable)
+    {
+        if (row is not RepoItemViewModel item
+            || RepoList.ContainerFromItem(item) is not ListViewItem container)
+        {
+            return;
+        }
+
+        List<Button> buttons = [];
+        CollectButtons(container, buttons);
+        for (int i = 0; i < Math.Min(item.Actions.Count, 9) && i < buttons.Count; i++)
+        {
+            buttons[i].AccessKey = enable ? (i + 1).ToString() : string.Empty;
+        }
+    }
+
+    private static int? NumberOf(VirtualKey key) => key switch
+    {
+        >= VirtualKey.Number1 and <= VirtualKey.Number9 => key - VirtualKey.Number0,
+        >= VirtualKey.NumberPad1 and <= VirtualKey.NumberPad9 => key - VirtualKey.NumberPad0,
+        _ => null,
+    };
 
     private void FocusRow(int index)
     {

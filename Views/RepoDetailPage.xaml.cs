@@ -1,4 +1,6 @@
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
+using Windows.System;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -28,6 +30,36 @@ public sealed partial class RepoDetailPage : Page, IDisposable
     public void OnHidden() => ViewModel.OnHidden();
 
     public void Dispose() => ViewModel.Dispose();
+
+    private void Page_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        int number = e.Key switch
+        {
+            >= VirtualKey.Number1 and <= VirtualKey.Number9 => e.Key - VirtualKey.Number0,
+            >= VirtualKey.NumberPad1 and <= VirtualKey.NumberPad9 => e.Key - VirtualKey.NumberPad0,
+            _ => 0,
+        };
+
+        if (number == 0
+            || number > ViewModel.Actions.Count
+            || IsKeyDown(VirtualKey.Control)
+            || IsKeyDown(VirtualKey.Menu)
+            || IsKeyDown(VirtualKey.Shift))
+        {
+            return;
+        }
+
+        e.Handled = true;
+        RepoActionViewModel action = ViewModel.Actions[number - 1];
+        if (action.IsEnabled)
+        {
+            action.RunCommand.Execute(null);
+        }
+    }
+
+    private static bool IsKeyDown(VirtualKey key) =>
+        InputKeyboardSource.GetKeyStateForCurrentThread(key)
+            .HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
 
     private void CopyBranch_PointerEntered(object sender, PointerRoutedEventArgs e) =>
         SetCopyBranchOpacity(sender, 1);
